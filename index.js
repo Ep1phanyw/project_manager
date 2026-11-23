@@ -390,7 +390,7 @@ function childRunner(ctx, parent, workspace) {
 /** 还没项目时：把「grill → to-spec → to-tickets」这条流程交出去。 */
 async function bootstrap(ctx, invocation) {
   const brief = flowBrief()
-  const nudged = await nudgeSession(ctx, invocation.agent, brief)
+  const nudged = await nudgeSession(ctx, invocation.agent, brief, invocation.signal)
 
   const header = nudged.ok
     ? '还没有项目。这条流程已经排进本会话，主对话接下来会按顺序开始访谈。'
@@ -400,7 +400,7 @@ async function bootstrap(ctx, invocation) {
 }
 
 /** 给当前会话排一条消息，让它真的动起来。失败时把原因带回去，不静默。 */
-async function nudgeSession(ctx, agent, text) {
+async function nudgeSession(ctx, agent, text, signal) {
   try {
     const controller = ctx.get('sessionController')
     if (!controller) return { ok: false, reason: '拿不到 sessionController 服务' }
@@ -408,12 +408,18 @@ async function nudgeSession(ctx, agent, text) {
       return { ok: false, reason: 'sessionController 上没有 prompt 方法' }
     }
 
-    await controller.prompt({
-      requestId: `dsh-manager-flow-${Date.now()}`,
-      sessionId: agent.id,
-      mode: 'queue',
-      content: [{ type: 'text', text }],
-    })
+    // prompt(request, signal) —— 漏传 signal 会在内部 throwIfAborted 上炸。
+    const usable = signal ?? new AbortController().signal
+
+    await controller.prompt(
+      {
+        requestId: `dsh-manager-flow-${Date.now()}`,
+        sessionId: agent.id,
+        mode: 'queue',
+        content: [{ type: 'text', text }],
+      },
+      usable,
+    )
     return { ok: true }
   } catch (error) {
     return { ok: false, reason: error instanceof Error ? error.message : String(error) }
