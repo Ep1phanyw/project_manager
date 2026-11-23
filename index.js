@@ -1,5 +1,5 @@
 /**
- * dsh-manager — 项目编排插件的宿主半侧入口。
+ * project_manager — 项目编排插件的宿主半侧入口。
  *
  * 模型开车：这里只提供工具与命令，驾驶由主对话自己做。
  * 状态落在会话工作区的 `.scratch/` 下，是普通 markdown。
@@ -17,9 +17,10 @@ import { formatBlockReport } from './lib/format.js'
 import { readEvidenceTypes, readSnapshotMode } from './lib/config.js'
 import { FLOW, flowBrief, flowSkillRegistrations, readSkill } from './lib/skills.js'
 import { strayChanges } from './lib/git.js'
+import { runCommandCapture } from './lib/exec.js'
 import { surveyWorkspace, workspaceContext } from './lib/workspace.js'
 
-export const name = 'dsh-manager'
+export const name = 'project_manager'
 
 /** 三个都是硬依赖：少一个就不该半装好地跑起来。 */
 export const inject = ['commands', 'tools', 'workingDirectory', 'subagents']
@@ -108,6 +109,7 @@ export function apply(ctx, config) {
       snapshot: snapshotMode === 'off' ? null : snapshotter(workspace, snapshotMode),
       evidenceTypes,
       strayCheck: (part) => strayChanges(workspace, part.files),
+      runVerify: (command) => runCommandCapture(command, { cwd: workspace }),
     })
   }
 
@@ -125,6 +127,11 @@ export function apply(ctx, config) {
           items: { type: 'string' },
           description: '逐条可核对的验收标准；「做好了」不算，每条都要能产出证据',
         },
+        verify: {
+          type: 'string',
+          description:
+            '可选：一条核对命令（例如 node test/run.js）。配了它，收尾验收会由插件自己跑一遍，不通过就不算数 —— 证据从此不只是文字。',
+        },
       },
       required: ['name', 'goal', 'acceptance'],
       additionalProperties: false,
@@ -135,7 +142,9 @@ export function apply(ctx, config) {
 
       return {
         ok: true,
-        text: `项目「${result.slug}」已创建，目标与验收标准写在 .scratch/${result.slug}/ 下。`,
+        text: `项目「${result.slug}」已创建，目标与验收标准写在 .scratch/${result.slug}/ 下。${
+          args?.verify ? `收尾验收会由插件自己跑「${args.verify}」。` : '没配核对命令：收尾验收只能看文字证据。'
+        }`,
       }
     },
   })
@@ -454,7 +463,7 @@ export function apply(ctx, config) {
           return { kind: 'success', text: formatStatus(result.project) }
         },
       }),
-    'dsh-manager: /manager command',
+    'project_manager: /manager command',
   )
 }
 
@@ -477,7 +486,7 @@ function registerTool(ctx, stateFor, { name, description, parameters, run }) {
           return { ok: true, text: result.text }
         },
       }),
-    `dsh-manager: ${name} tool`,
+    `project_manager: ${name} tool`,
   )
 }
 
@@ -493,7 +502,7 @@ function childRunner(ctx, parent, workspace) {
 
     const activation = await ctx.subagents.startActivation({
       provider: 'spawn',
-      label: `dsh-manager ${part.id}`,
+      label: `project_manager ${part.id}`,
       prompt: [{ type: 'text', text: prompt }],
       parent,
       cwd: workspace,
@@ -540,7 +549,7 @@ function snapshotter(workspace, mode) {
       return { ok: false, problem: '这个部分没有声明文件，没东西可提交' }
     }
 
-    const message = `dsh-manager: ${part?.id ?? '?'} 完成 — ${part?.title ?? ''}`.trim()
+    const message = `project_manager: ${part?.id ?? '?'} 完成 — ${part?.title ?? ''}`.trim()
     const addArgs =
       mode === 'all'
         ? ['-C', workspace, 'add', '-A']
@@ -586,7 +595,7 @@ function registerFlowSkills(ctx) {
   if (!skills || typeof skills.register !== 'function') return
 
   for (const skill of flowSkillRegistrations()) {
-    ctx.effect(() => skills.register(skill), `dsh-manager: ${skill.name} skill`)
+    ctx.effect(() => skills.register(skill), `project_manager: ${skill.name} skill`)
   }
 }
 
@@ -656,7 +665,7 @@ async function nudgeSession(ctx, agent, text, signal) {
 
     await controller.prompt(
       {
-        requestId: `dsh-manager-flow-${Date.now()}`,
+        requestId: `project_manager-flow-${Date.now()}`,
         sessionId: agent.id,
         mode: 'queue',
         content: [{ type: 'text', text }],

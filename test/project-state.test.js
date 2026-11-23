@@ -135,7 +135,7 @@ test('status 读回目标与逐条验收标准', () => {
 })
 
 test('真文件存储：换一个全新的状态机实例仍能读回', () => {
-  const workspace = mkdtempSync(join(tmpdir(), 'dsh-manager-'))
+  const workspace = mkdtempSync(join(tmpdir(), 'project_manager-'))
   try {
     const root = join(workspace, '.scratch')
     startDemo(createProjectState({ store: createFsStore(root) }))

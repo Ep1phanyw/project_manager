@@ -28,11 +28,11 @@ test('每个技能注册两份：原名 + 前缀别名，都可被模型调用',
     registrations.map((item) => item.name),
     [
       'grill-with-docs',
-      'dsh-manager-grill',
+      'project_manager-grill',
       'to-spec',
-      'dsh-manager-spec',
+      'project_manager-spec',
       'to-tickets',
-      'dsh-manager-tickets',
+      'project_manager-tickets',
     ],
   )
   for (const item of registrations) {
@@ -77,7 +77,7 @@ test('流程指令是短的：只点原名，不把正文塞进来', () => {
     assert.match(brief, /to-tickets/)
     assert.match(brief, /manager_plan/)
     assert.match(brief, /来源：/)
-    assert.match(brief, /dsh-manager-grill/)
+    assert.match(brief, /project_manager-grill/)
     assert.match(brief, /原名 grill-with-docs/)
     assert.ok(brief.split('\n').length < 20, '指令应该短')
     assert.doesNotMatch(brief, /正文 grill-with-docs/)

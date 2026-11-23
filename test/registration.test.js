@@ -40,7 +40,7 @@ function install(workspace) {
 }
 
 function emptyWorkspace() {
-  const dir = mkdtempSync(join(tmpdir(), 'dsh-manager-'))
+  const dir = mkdtempSync(join(tmpdir(), 'project_manager-'))
   return { dir, cleanup: () => rmSync(dir, { recursive: true, force: true }) }
 }
 

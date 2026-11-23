@@ -1,4 +1,4 @@
-# dsh-manager
+# project_manager
 
 把一次交付拆成若干**部分**，交给上下文独立的**子对话**；**主对话**负责规划、派分、验收。插件只出工具，开车的是主对话。
 
@@ -28,14 +28,14 @@
 
 装好后：
 
-- 在 Plugins 页确认 `dsh-manager` 一行已启用；
+- 在 Plugins 页确认 `project_manager` 一行已启用；
 - 新开一个会话，输入 `/manager`。还没有项目时应该回「还没有项目；先在主对话里启动一个项目」。
 
 本包通过 `cordis.patch.yml` 挂进配置树；插件需要 `commands`、`tools`、`workingDirectory`、`subagents` 四项能力，缺一项就不会半装好地跑起来。
 
 ## 斜杠命令
 
-`/manager` 在**没有项目**时是建项目的入口：它会输出一条三行的流程，并把三个上游技能注册成可被模型调用的别名（`dsh-manager-grill` / `dsh-manager-spec` / `dsh-manager-tickets`），正文走技能通道加载，对话里只留一个短标记。有项目时它照旧显示状态。
+`/manager` 在**没有项目**时是建项目的入口：它会输出一条三行的流程，并把三个上游技能注册成可被模型调用的别名（`project_manager-grill` / `project_manager-spec` / `project_manager-tickets`），正文走技能通道加载，对话里只留一个短标记。有项目时它照旧显示状态。
 
 ### 随包分发的三个技能
 
@@ -43,15 +43,15 @@
 
 | 原名 | 插件里的别名 | 用来做什么 |
 | --- | --- | --- |
-| `grill-with-docs` | `dsh-manager-grill` | 把需求问清楚，边问边把术语与决定落进 `GLOSSARY.md` 与 ADR |
-| `to-spec` | `dsh-manager-spec` | 把访谈收敛成 spec，写到 `.scratch/<项目名>/spec.md` |
-| `to-tickets` | `dsh-manager-tickets` | 把 spec 拆成带先后关系的部分，写成 `.scratch/<项目名>/issues/NN-*.md` |
+| `grill-with-docs` | `project_manager-grill` | 把需求问清楚，边问边把术语与决定落进 `GLOSSARY.md` 与 ADR |
+| `to-spec` | `project_manager-spec` | 把访谈收敛成 spec，写到 `.scratch/<项目名>/spec.md` |
+| `to-tickets` | `project_manager-tickets` | 把 spec 拆成带先后关系的部分，写成 `.scratch/<项目名>/issues/NN-*.md` |
 
 **为什么注册两份**：技能目录里同名是「先注册者赢」。你本机若已装过同名技能（尤其它们标着 `disable-model-invocation: true`），插件用原名注册的那份就永远抢不到，模型也就调不到。带前缀的别名不会撞车，所以在任何机器上都可用。`/manager` 的流程指令指的是**别名**，就是因为这个。
 
 两者的正文来源一致：**本地优先**（`~/.agents/skills/`，你改过就生效），本地没有才用包里那份。
 
-本机也有同名技能时，只是多出三行 `dsh-manager-*` 条目，不会报错。
+本机也有同名技能时，只是多出三行 `project_manager-*` 条目，不会报错。
 
 ### 来源与署名
 

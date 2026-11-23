@@ -42,7 +42,7 @@ test('合法计划落盘，并在 status 里看得到每个部分', () => {
 })
 
 test('计划写入文件后，换一个全新实例仍能读回 —— 依赖与文件集不丢', () => {
-  const workspace = mkdtempSync(join(tmpdir(), 'dsh-manager-'))
+  const workspace = mkdtempSync(join(tmpdir(), 'project_manager-'))
   try {
     const root = join(workspace, '.scratch')
     const writer = createProjectState({ store: createFsStore(root) })

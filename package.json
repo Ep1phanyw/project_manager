@@ -1,5 +1,5 @@
 {
-  "name": "dsh-manager",
+  "name": "project_manager",
   "version": "0.1.0",
   "description": "把一次项目交付拆成部分、分派给子对话、按验收标准收工。",
   "keywords": [
@@ -15,11 +15,11 @@
   "author": "Ep1phanyw",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Ep1phanyw/dsh-manager.git"
+    "url": "git+https://github.com/Ep1phanyw/project_manager.git"
   },
-  "homepage": "https://github.com/Ep1phanyw/dsh-manager#readme",
+  "homepage": "https://github.com/Ep1phanyw/project_manager#readme",
   "bugs": {
-    "url": "https://github.com/Ep1phanyw/dsh-manager/issues"
+    "url": "https://github.com/Ep1phanyw/project_manager/issues"
   },
   "type": "module",
   "main": "index.js",

@@ -2,7 +2,7 @@
 
 ## 0. 名字（当前阻塞）
 
-`dsh-manager` 这个名字 **npm 上已经被占**（`tudamu`，2026-10-07 发布，0.0.1）。
+`project_manager` 这个名字 **npm 上已经被占**（`tudamu`，2026-10-07 发布，0.0.1）。
 在改名之前不能 `npm publish`，否则会得到 403。
 
 两个选项：
@@ -10,7 +10,7 @@
 | 选项 | 说明 |
 | --- | --- |
 | **改包名** | 例如 `dsh-project-manager`。要同步改 `package.json` 的 `name`、`cordis.patch.yml` 的 `id`，并重新安装一次插件（profile 里记的是 `include:<包名>`） |
-| **加 scope** | 例如 `@ep1phanyw/dsh-manager`。自己的 scope 一定可用，不用猜名字有没有被占 |
+| **加 scope** | 例如 `@ep1phanyw/project_manager`。自己的 scope 一定可用，不用猜名字有没有被占 |
 
 改完之后 `bundle` 的 id 与包名要保持一致 —— 这条是 `cordis.patch.yml` 开头的约定。
 
