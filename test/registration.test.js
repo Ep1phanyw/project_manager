@@ -67,7 +67,7 @@ test('/manager 在还没有项目时给出建项目的流程，而不是一句�
       const result = await commands[0].handler({ rawInput, agent: {} })
       assert.equal(result.kind, 'success', `${JSON.stringify(rawInput)} 应该走引导`)
       assert.match(result.text, /还没有项目/)
-      assert.match(result.text, /grill-with-docs/)
+      assert.match(result.text, /dsh-manager-grill/)
       assert.match(result.text, /manager_plan/)
     }
   } finally {

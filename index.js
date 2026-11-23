@@ -12,7 +12,7 @@ import { EVIDENCE_TYPES, createProjectState } from './lib/project-state.js'
 import { createFsStore } from './lib/store.js'
 
 import { formatBlockReport } from './lib/format.js'
-import { flowBrief } from './lib/skills.js'
+import { aliasRegistrations, flowBrief } from './lib/skills.js'
 
 export const name = 'dsh-manager'
 
@@ -75,6 +75,8 @@ const TEXT_OUTPUT = {
 }
 
 export function apply(ctx) {
+  registerFlowSkills(ctx)
+
   /** 每次调用都按它所在会话的工作区解析状态目录，状态天然跟随会话。 */
   async function stateFor(agent) {
     const workspace = await ctx.workingDirectory.ensure(agent)
@@ -384,6 +386,22 @@ function childRunner(ctx, parent, workspace) {
         // 已经结束的激活无需再清理
       }
     }
+  }
+}
+
+/**
+ * 把三个工程技能注册成「模型可调用」的别名。
+ *
+ * 原名注册是 first-wins —— 用户文件系统那份会赢，改不了它的 invocation。
+ * 所以换带前缀的名字，正文在加载时从磁盘读，模型随后用 skill 工具加载，
+ * 对话里只留一个短标记。
+ */
+function registerFlowSkills(ctx) {
+  const skills = typeof ctx.get === 'function' ? ctx.get('skills') : undefined
+  if (!skills || typeof skills.register !== 'function') return
+
+  for (const alias of aliasRegistrations()) {
+    ctx.effect(() => skills.register(alias), `dsh-manager: ${alias.name} skill`)
   }
 }
 

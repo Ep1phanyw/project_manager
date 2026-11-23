@@ -35,6 +35,20 @@
 
 ## 斜杠命令
 
+`/manager` 在**没有项目**时是建项目的入口：它会输出一条三行的流程，并把三个上游技能注册成可被模型调用的别名（`dsh-manager-grill` / `dsh-manager-spec` / `dsh-manager-tickets`），正文走技能通道加载，对话里只留一个短标记。有项目时它照旧显示状态。
+
+### 前置依赖
+
+那三个别名是从本机 `~/.agents/skills/` 下读的：
+
+| 别名 | 需要的源技能 |
+| --- | --- |
+| `dsh-manager-grill` | `grill-with-docs` |
+| `dsh-manager-spec` | `to-spec` |
+| `dsh-manager-tickets` | `to-tickets` |
+
+**缺了会怎样**：缺哪个就少哪个别名，`/manager` 会在流程后面点名缺什么；**三个都缺**时它会明说，并给出退路 —— 直接讲目标和验收标准，用 `manager_start` 起项目。核心回路（start → plan → run → verify）不依赖这些技能。
+
 三个最常用的：
 
 | 命令 | 作用 |
