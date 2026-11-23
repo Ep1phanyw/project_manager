@@ -1,0 +1,29 @@
+{
+  "name": "dsh-manager",
+  "version": "0.1.0",
+  "description": "把一次项目交付拆成部分、分派给子对话、按验收标准收工。",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "cordis.patch.yml"
+  ],
+  "engines": {
+    "node": ">=22",
+    "dsh": "^0.2.3-alpha.2"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "test": "node test/registration.test.js"
+  },
+  "license": "MIT"
+}
