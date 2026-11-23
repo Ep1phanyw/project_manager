@@ -7,19 +7,7 @@ import { join } from 'node:path'
 import { formatStatus } from '../lib/format.js'
 import { createProjectState } from '../lib/project-state.js'
 import { createFsStore } from '../lib/store.js'
-
-function memoryStore() {
-  const projects = new Map()
-
-  return {
-    listProjects: () => [...projects.keys()].sort(),
-    read: (slug) => projects.get(slug) ?? null,
-    write: (slug, documents) => {
-      const current = projects.get(slug) ?? { project: null, acceptance: null, plan: null }
-      projects.set(slug, { ...current, ...documents })
-    },
-  }
-}
+import { memoryStore } from './memory-store.js'
 
 function withProject(store = memoryStore()) {
   const state = createProjectState({ store })
@@ -243,4 +231,70 @@ test('status 文本里能看见每个部分、依赖与证据', () => {
   assert.match(text, /test/)
   assert.match(text, /build/)
   assert.match(text, /P1/)
+})
+
+test('部分标题带换行时拒绝 —— 否则计划文件会被写坏且再也读不回来', () => {
+  const { store, state } = withProject()
+
+  const result = state.submitPlan({
+    parts: [{ title: '做登录\n页', files: ['a.js'], evidence: 'test' }],
+  })
+
+  assert.equal(result.ok, false)
+  assert.match(result.problem, /换行/)
+  assert.equal(store.read('demo').plan, null)
+})
+
+test('文件路径里带逗号也能原样读回 —— 不靠分隔符拆分', () => {
+  const { state } = withProject()
+  const files = ['src/a,b.js', 'src/ c.js ']
+
+  state.submitPlan({ parts: [{ title: '甲', files, evidence: 'test' }] })
+
+  const { project } = state.status()
+  assert.deepEqual(project.parts[0].files, ['src/a,b.js', 'src/ c.js'])
+})
+
+test('部分编号可以自己指定，依赖按编号对得上', () => {
+  const { state } = withProject()
+
+  const result = state.submitPlan({
+    parts: [
+      { id: 'P7', title: '甲', files: ['a.js'], evidence: 'test' },
+      { id: 'P8', title: '乙', dependsOn: ['P7'], files: ['b.js'], evidence: 'test' },
+    ],
+  })
+
+  assert.equal(result.ok, true)
+  const { project } = state.status()
+  assert.deepEqual(
+    project.parts.map((part) => part.id),
+    ['P7', 'P8'],
+  )
+  assert.deepEqual(project.parts[1].dependsOn, ['P7'])
+})
+
+test('自己依赖自己被判成环', () => {
+  const { state } = withProject()
+
+  const result = state.submitPlan({
+    parts: [{ id: 'P1', title: '甲', dependsOn: ['P1'], files: ['a.js'], evidence: 'test' }],
+  })
+
+  assert.equal(result.ok, false)
+  assert.match(result.problem, /环/)
+})
+
+test('计划文件被手工改成认不出的内容时报错，而不是静默给出残缺计划', () => {
+  const store = memoryStore()
+  const state = createProjectState({ store })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  store.write('demo', {
+    plan: '# 计划\n\n## [P1] 甲\n\n这不是字段行\n',
+  })
+
+  const result = state.status()
+
+  assert.equal(result.ok, false)
+  assert.match(result.problem, /认不出来/)
 })
