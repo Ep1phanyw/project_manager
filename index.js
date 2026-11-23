@@ -38,7 +38,8 @@ const REPORT_SCHEMA = {
     evidence: {
       type: 'array',
       items: { type: 'string' },
-      description: '可复现的证据：测试输出、构建结果、命令输出或产物路径',
+      description:
+        '可复现的证据。每条以证据类型开头，例如「test：node --test 全绿」「command：ls 输出」；报完成时至少要有一条是这部分要求的类型',
     },
     blockedReason: { type: 'string', description: '仅当 status 为 blocked 时必填' },
   },

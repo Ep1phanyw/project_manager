@@ -147,6 +147,19 @@ test('判为阻塞却没有理由时被拒', async () => {
   assert.match(result.problem, /阻塞/)
 })
 
+test('报完成却没有这个类型要求的证据时被拒', async () => {
+  const { state } = approvedProject(async () => ({
+    ok: true,
+    report: { status: 'done', summary: '做完了', evidence: ['我看了一下，挺好的'] },
+  }))
+
+  const result = await state.dispatchNext()
+
+  assert.equal(result.ok, false)
+  assert.match(result.problem, /test/)
+  assert.equal(state.status().project.partStatus.P1, 'invalid')
+})
+
 test('待用户确认是合法回报，不算完成', async () => {
   const { state } = approvedProject(async () => ({
     ok: true,
