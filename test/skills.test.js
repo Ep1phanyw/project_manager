@@ -4,94 +4,100 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { aliasRegistrations, flowBrief, missingSkills, readSkill } from '../lib/skills.js'
+import { bundledRoot, flowBrief, flowSkillRegistrations, missingSkills, readSkill } from '../lib/skills.js'
 
 function fakeRoot(present = ['grill-with-docs', 'to-spec']) {
   const root = mkdtempSync(join(tmpdir(), 'dsh-skills-'))
   for (const name of present) {
-    mkdirSync(join(root, name), { recursive: true })
-    writeFileSync(
-      join(root, name, 'SKILL.md'),
-      `---\nname: ${name}\ndescription: x\n---\n\n# ${name}\n\n正文 ${name}。\n`,
-    )
+    writeFileSync(join(root, `${name}.md`), `# ${name}\n\n正文 ${name}。\n`)
   }
   return { root, cleanup: () => rmSync(root, { recursive: true, force: true }) }
 }
 
-test('读技能正文时去掉 frontmatter', () => {
+test('包里自带的三个技能都能读到正文', () => {
+  for (const name of ['grill-with-docs', 'to-spec', 'to-tickets']) {
+    const body = readSkill(name, bundledRoot(), null)
+    assert.ok(body && body.length > 50, `${name} 应该有正文`)
+  }
+})
+
+test('注册用原名，且模型与用户都能调用', () => {
+  const registrations = flowSkillRegistrations(bundledRoot(), null)
+
+  assert.deepEqual(
+    registrations.map((item) => item.name),
+    ['grill-with-docs', 'to-spec', 'to-tickets'],
+  )
+  for (const item of registrations) {
+    assert.equal(item.invocation.modelInvocable, true)
+    assert.equal(item.invocation.userInvocable, true)
+    assert.match(item.content, /第 \d 步/)
+  }
+})
+
+test('frontmatter 被剥掉', () => {
   const { root, cleanup } = fakeRoot()
   try {
-    const body = readSkill('grill-with-docs', root)
-    assert.match(body, /正文 grill-with-docs/)
+    writeFileSync(
+      join(root, 'to-spec.md'),
+      '---\nname: to-spec\ndescription: x\n---\n\n# To Spec\n\n正文。\n',
+    )
+    const body = readSkill('to-spec', root)
+    assert.match(body, /# To Spec/)
     assert.doesNotMatch(body, /description: x/)
   } finally {
     cleanup()
   }
 })
 
-test('技能不存在时返回 null', () => {
-  const { root, cleanup } = fakeRoot()
-  try {
-    assert.equal(readSkill('to-tickets', root), null)
-  } finally {
-    cleanup()
-  }
-})
-
-test('只给机器上真有的技能注册别名，且别名可被模型调用', () => {
-  const { root, cleanup } = fakeRoot()
-  try {
-    const aliases = aliasRegistrations(root)
-
-    assert.deepEqual(
-      aliases.map((alias) => alias.name),
-      ['dsh-manager-grill', 'dsh-manager-spec'],
-    )
-    for (const alias of aliases) {
-      assert.equal(alias.invocation.modelInvocable, true)
-      assert.equal(alias.invocation.userInvocable, false)
-      assert.match(alias.content, /第 \d 步/)
-    }
-  } finally {
-    cleanup()
-  }
-})
-
-test('缺哪些源技能能报出来', () => {
+test('缺哪些技能能报出来', () => {
   const { root, cleanup } = fakeRoot(['grill-with-docs'])
   try {
-    assert.deepEqual(missingSkills(root), ['to-spec', 'to-tickets'])
+    assert.deepEqual(missingSkills(root, null), ['to-spec', 'to-tickets'])
   } finally {
     cleanup()
   }
 })
 
-test('流程指令是短的：只点别名，不把正文塞进来', () => {
+test('流程指令是短的：只点原名，不把正文塞进来', () => {
   const { root, cleanup } = fakeRoot(['grill-with-docs', 'to-spec', 'to-tickets'])
   try {
-    const brief = flowBrief(root)
+    const brief = flowBrief(root, null)
 
-    assert.match(brief, /dsh-manager-grill/)
-    assert.match(brief, /dsh-manager-spec/)
-    assert.match(brief, /dsh-manager-tickets/)
+    assert.match(brief, /grill-with-docs/)
+    assert.match(brief, /to-spec/)
+    assert.match(brief, /to-tickets/)
     assert.match(brief, /manager_plan/)
     assert.match(brief, /来源：/)
     assert.ok(brief.split('\n').length < 15, '指令应该短')
-    assert.doesNotMatch(brief, /正文 grill-with-docs/, '正文不该出现在指令里')
+    assert.doesNotMatch(brief, /正文 grill-with-docs/)
   } finally {
     cleanup()
   }
 })
 
-test('缺技能时指令里如实点名，并给出退路', () => {
+test('缺技能时指令里如实点名', () => {
   const { root, cleanup } = fakeRoot([])
   try {
-    const brief = flowBrief(root)
+    const brief = flowBrief(root, null)
 
     assert.match(brief, /缺少 grill-with-docs、to-spec、to-tickets/)
     assert.match(brief, /manager_start/)
-    assert.match(brief, /~\/.agents\/skills/)
   } finally {
     cleanup()
+  }
+})
+
+test('包里没有时回落到兜底目录', () => {
+  const primary = mkdtempSync(join(tmpdir(), 'dsh-primary-'))
+  const fallback = mkdtempSync(join(tmpdir(), 'dsh-fallback-'))
+  try {
+    writeFileSync(join(fallback, 'to-spec.md'), '# 兜底\n\n来自用户目录的正文。\n')
+
+    assert.equal(readSkill('to-spec', primary, null), null)
+    assert.match(readSkill('to-spec', primary, fallback), /来自用户目录/)
+  } finally {
+    rmSync(primary, { recursive: true, force: true })
+    rmSync(fallback, { recursive: true, force: true })
   }
 })

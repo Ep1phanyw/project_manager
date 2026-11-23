@@ -13,7 +13,7 @@ import { EVIDENCE_TYPES, createProjectState } from './lib/project-state.js'
 import { createFsStore } from './lib/store.js'
 
 import { formatBlockReport } from './lib/format.js'
-import { aliasRegistrations, flowBrief } from './lib/skills.js'
+import { flowBrief, flowSkillRegistrations } from './lib/skills.js'
 
 export const name = 'dsh-manager'
 
@@ -404,18 +404,17 @@ function originChecker(workspace) {
 }
 
 /**
- * 把三个工程技能注册成「模型可调用」的别名。
+ * 把随包分发的三个工程技能注册进技能目录。
  *
- * 原名注册是 first-wins —— 用户文件系统那份会赢，改不了它的 invocation。
- * 所以换带前缀的名字，正文在加载时从磁盘读，模型随后用 skill 工具加载，
- * 对话里只留一个短标记。
+ * 用原名注册：同名时谁赢由 skills 服务的分层顺序决定（project > runtime > user），
+ * 若用户自己装了同名技能且排在前面，效果是模型照样能按原名调用。
  */
 function registerFlowSkills(ctx) {
   const skills = typeof ctx.get === 'function' ? ctx.get('skills') : undefined
   if (!skills || typeof skills.register !== 'function') return
 
-  for (const alias of aliasRegistrations()) {
-    ctx.effect(() => skills.register(alias), `dsh-manager: ${alias.name} skill`)
+  for (const skill of flowSkillRegistrations()) {
+    ctx.effect(() => skills.register(skill), `dsh-manager: ${skill.name} skill`)
   }
 }
 

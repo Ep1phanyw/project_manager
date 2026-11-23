@@ -12,7 +12,10 @@
   "files": [
     "index.js",
     "lib",
-    "cordis.patch.yml"
+    "skills",
+    "cordis.patch.yml",
+    "THIRD-PARTY-NOTICES.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=22",

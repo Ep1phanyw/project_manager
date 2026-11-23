@@ -37,33 +37,29 @@
 
 `/manager` 在**没有项目**时是建项目的入口：它会输出一条三行的流程，并把三个上游技能注册成可被模型调用的别名（`dsh-manager-grill` / `dsh-manager-spec` / `dsh-manager-tickets`），正文走技能通道加载，对话里只留一个短标记。有项目时它照旧显示状态。
 
-### 前置依赖
+### 随包分发的三个技能
 
-那三个别名是从本机 `~/.agents/skills/` 下读的：
+`/manager` 在没有项目时会用到三个技能，它们的正文**随本插件一起分发**（在包的 `skills/` 目录），装上就有，不需要另装：
 
-| 别名 | 需要的源技能 |
+| 技能 | 用来做什么 |
 | --- | --- |
-| `dsh-manager-grill` | `grill-with-docs` |
-| `dsh-manager-spec` | `to-spec` |
-| `dsh-manager-tickets` | `to-tickets` |
+| `grill-with-docs` | 把需求问清楚，边问边把术语与决定落进 `GLOSSARY.md` 与 ADR |
+| `to-spec` | 把访谈收敛成 spec，写到 `.scratch/<项目名>/spec.md` |
+| `to-tickets` | 把 spec 拆成带先后关系的部分，写成 `.scratch/<项目名>/issues/NN-*.md` |
 
-**缺了会怎样**：缺哪个就少哪个别名，`/manager` 会在流程后面点名缺什么；**三个都缺**时它会明说，并给出退路 —— 直接讲目标和验收标准，用 `manager_start` 起项目。核心回路（start → plan → run → verify）不依赖这些技能。
+插件加载时把它们注册进技能目录（原名、模型与用户都可调用），所以对话里只出现一个短标记，正文走技能通道。
+
+本机 `~/.agents/skills/` 里**也**装了同名技能时，用哪一份由 DSH 的技能分层顺序决定 —— 两份都可用，不会报错。想覆盖成自己改过的版本，改本地那份即可。
 
 ### 来源与署名
 
-上面三个别名的正文来自 **Matt Pocock 的 [skills](https://github.com/mattpocock/skills)**：
+上面三个技能的作者是 **Matt Pocock**，原仓库：<https://github.com/mattpocock/skills>。
 
-| 别名 | 原技能 |
-| --- | --- |
-| `dsh-manager-grill` | `grill-with-docs` |
-| `dsh-manager-spec` | `to-spec` |
-| `dsh-manager-tickets` | `to-tickets` |
+- 许可：**MIT**（`Copyright (c) 2026 Matt Pocock`）
+- 正文**逐字未改**地随包分发，完整版权声明见 [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) —— MIT 要求在副本中附上该声明，这个文件就是为此存在
+- 上游作者在 README 中明确邀请改编：*"These skills are designed to be small, easy to adapt, and composable… Hack around with them. Make them your own."*
 
-那个仓库是 **MIT 许可**（`Copyright (c) 2026 Matt Pocock`），作者在 README 里明确邀请改编：*"These skills are designed to be small, easy to adapt, and composable… Hack around with them. Make them your own."*
-
-**本插件不打包他的任何正文**：包内容只有 `index.js`、`lib/`、`cordis.patch.yml`。正文在加载时从本机 `~/.agents/skills/` 读取，再注册成别名 —— 所以 MIT 里「复制或分发实质部分需附版权声明」这一条在这里不触发。
-
-如果你将来把正文**内联进插件**，请连同上面那句版权声明一起带上。
+本插件自己的许可见 [`LICENSE`](LICENSE)。
 
 三个最常用的：
 
