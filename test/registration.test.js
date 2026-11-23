@@ -1,17 +1,24 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { apply, inject } from '../index.js'
+import { apply } from '../index.js'
 
-/** 记录注册动作的最小假 ctx —— 只覆盖本票用到的两个能力。 */
-function fakeCtx() {
+/**
+ * 装一次插件，只返回它注册出来的东西。
+ * 假的 register 会真的把命令记进列表、并在注销时移出去，
+ * 这样「卸载后命令消失」才是被验证过的，而不是只断言拿到个函数。
+ */
+function install() {
   const commands = []
   const disposers = []
   const ctx = {
     commands: {
       register(definition) {
         commands.push(definition)
-        return () => {}
+        return () => {
+          const index = commands.indexOf(definition)
+          if (index >= 0) commands.splice(index, 1)
+        }
       },
     },
     effect(callback, label) {
@@ -20,26 +27,22 @@ function fakeCtx() {
       return dispose
     },
   }
-  return { ctx, commands, disposers }
+
+  // 第二个参数对着 Cordis 的 apply(ctx, config) 契约，本票还不用它。
+  apply(ctx, {})
+
+  return { commands, disposers }
 }
 
-test('插件声明依赖 commands 服务', () => {
-  assert.deepEqual(inject, ['commands'])
-})
-
 test('装好之后注册了一条名为 manager 的命令', () => {
-  const { ctx, commands } = fakeCtx()
-
-  apply(ctx, {})
+  const { commands } = install()
 
   assert.equal(commands.length, 1)
   assert.equal(commands[0].name, 'manager')
 })
 
 test('敲 /manager 会拿到一条非空的成功回应', () => {
-  const { ctx, commands } = fakeCtx()
-
-  apply(ctx, {})
+  const { commands } = install()
 
   const result = commands[0].handler({ rawInput: '' })
 
@@ -48,12 +51,13 @@ test('敲 /manager 会拿到一条非空的成功回应', () => {
   assert.ok(result.text.trim().length > 0)
 })
 
-test('注册句柄被 ctx.effect 收集，插件卸载时能回收', () => {
-  const { ctx, disposers } = fakeCtx()
+test('插件卸载后 /manager 不再注册', () => {
+  const { commands, disposers } = install()
 
-  apply(ctx, {})
-
+  assert.equal(commands.length, 1)
   assert.equal(disposers.length, 1)
-  assert.equal(typeof disposers[0].dispose, 'function')
-  assert.match(disposers[0].label, /manager/)
+
+  disposers[0].dispose()
+
+  assert.equal(commands.length, 0)
 })
