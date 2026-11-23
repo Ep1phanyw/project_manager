@@ -240,6 +240,23 @@ test('技能注册抛错不会把整个插件拖下水', () => {
   }
 })
 
+test('/manager doctor 在没有项目时也能跑，并报出能力与结论', async () => {
+  const workspace = emptyWorkspace()
+  try {
+    const { commands } = install(workspace.dir)
+
+    const result = await commands[0].handler({ rawInput: 'doctor', agent: {} })
+
+    assert.equal(result.kind, 'success', result.text)
+    assert.match(result.text, /manager 自检/)
+    assert.match(result.text, /DSH 版本/)
+    assert.match(result.text, /能力：/)
+    assert.match(result.text, /结论：/)
+  } finally {
+    workspace.cleanup()
+  }
+})
+
 test('插件卸载后命令与工具都不再注册', () => {
   const { tools, commands, disposers } = install('D:\\plugin')
 

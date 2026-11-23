@@ -18,6 +18,7 @@ import { readEvidenceTypes, readSnapshotMode } from './lib/config.js'
 import { FLOW, flowBrief, flowSkillRegistrations, readSkill } from './lib/skills.js'
 import { strayChanges } from './lib/git.js'
 import { runCommandCapture } from './lib/exec.js'
+import { detectDshVersion, detectExpectedRange, formatDoctorReport } from './lib/doctor.js'
 import { surveyWorkspace, workspaceContext } from './lib/workspace.js'
 
 export const name = 'project_manager'
@@ -38,6 +39,7 @@ const APPROVE_KEYWORD = 'approve'
 const REJECT_KEYWORD = 'reject'
 const CONFIRM_KEYWORD = 'confirm'
 const ACCEPT_KEYWORD = 'accept'
+const DOCTOR_KEYWORD = 'doctor'
 const ABANDON_KEYWORD = 'abandon'
 const CRITERIA_KEYWORD = 'criteria'
 const DECLINE_KEYWORD = 'decline'
@@ -96,6 +98,54 @@ export function apply(ctx, config) {
   const evidenceTypes = readEvidenceTypes(config)
 
   registerFlowSkills(ctx)
+
+  /** 把「这个版本到底给了什么」摊开 —— 坏在哪个接口上一眼看得到。 */
+  async function doctorReport(ctxRef, agent) {
+    const workspace = await ctxRef.workingDirectory.ensure(agent)
+    const git = runCommandCapture('git --version', { cwd: workspace })
+    const skills = ctxRef.get?.('skills')
+
+    return formatDoctorReport({
+      version: detectDshVersion(),
+      expected: detectExpectedRange(),
+      workspace,
+      projects: createFsStore(join(workspace, '.scratch')).listProjects(),
+      capabilities: [
+        { name: 'commands.register', ok: typeof ctxRef.commands?.register === 'function' },
+        { name: 'tools.register', ok: typeof ctxRef.tools?.register === 'function' },
+        {
+          name: 'workingDirectory.ensure',
+          ok: typeof ctxRef.workingDirectory?.ensure === 'function',
+        },
+        {
+          name: 'subagents.startActivation',
+          ok: typeof ctxRef.subagents?.startActivation === 'function',
+          note: '派分要用',
+        },
+        {
+          name: 'sessionController.prompt',
+          ok: typeof ctxRef.get?.('sessionController')?.prompt === 'function',
+          note: '自动把流程排进会话要用',
+        },
+        {
+          name: 'skills.register',
+          ok: typeof skills?.register === 'function',
+          note: '随包分发技能要用',
+        },
+        {
+          name: 'skills.list',
+          ok: typeof skills?.list === 'function',
+          note: '检测技能被本机盖住要用',
+        },
+      ],
+      config: { snapshot: snapshotMode, evidenceTypes },
+      git: { ok: git.ok, note: git.ok ? git.output.split(/\r?\n/)[0] : git.output || '跑不起来' },
+      skills: {
+        registered: flowSkillRegistrations().map((skill) => skill.name),
+        shadowed: await shadowedSkills(ctxRef),
+      },
+    })
+  }
 
   /** 每次调用都按它所在会话的工作区解析状态目录，状态天然跟随会话。 */
   async function stateFor(agent) {
@@ -373,12 +423,18 @@ export function apply(ctx, config) {
       ctx.commands.register({
         name: COMMAND_NAME,
         description:
-          '项目状态、计划与审批：/manager（或 status）看状态，/manager approve 批准计划，/manager reject [理由] 驳回，/manager confirm [说明] 确认等你点头的部分，/manager decline [理由] 打回，/manager resolve [说明] 解除阻塞，/manager <项目名> 指定项目',
-        input: { hint: '[status | approve | reject [理由] | confirm [说明] | decline [理由] | resolve [说明] | 项目名]' },
+          '项目状态、计划与审批：/manager（或 status）看状态，/manager approve 批准计划，/manager reject [理由] 驳回，/manager confirm [说明] 确认等你点头的部分，/manager decline [理由] 打回，/manager resolve [说明] 解除阻塞，/manager accept 确认收尾验收，/manager abandon [理由] 放弃项目，/manager criteria 重开验收标准，/manager doctor 自检，/manager <项目名> 指定项目',
+        input: { hint: '[status | approve | reject [理由] | confirm [说明] | decline [理由] | resolve [说明] | accept | abandon [理由] | criteria | doctor | 项目名]' },
         async handler(invocation) {
-          const state = await stateFor(invocation.agent)
           const raw = invocation.rawInput.trim()
           const [keyword, ...rest] = raw.split(/\s+/)
+
+          // 自检要在「没有项目」时也能跑，所以放在解析项目之前。
+          if (keyword === DOCTOR_KEYWORD) {
+            return { kind: 'success', text: await doctorReport(ctx, invocation.agent) }
+          }
+
+          const state = await stateFor(invocation.agent)
 
           // 多个项目时用 @项目名 指定；不写就按「只有一个项目」处理。
           const targeted = rest[0]?.startsWith('@') ? rest[0].slice(1) : undefined
