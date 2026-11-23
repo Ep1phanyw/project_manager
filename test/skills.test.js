@@ -42,7 +42,7 @@ test('frontmatter 被剥掉', () => {
       join(root, 'to-spec.md'),
       '---\nname: to-spec\ndescription: x\n---\n\n# To Spec\n\n正文。\n',
     )
-    const body = readSkill('to-spec', root)
+    const body = readSkill('to-spec', root, null)
     assert.match(body, /# To Spec/)
     assert.doesNotMatch(body, /description: x/)
   } finally {
@@ -88,16 +88,20 @@ test('缺技能时指令里如实点名', () => {
   }
 })
 
-test('包里没有时回落到兜底目录', () => {
-  const primary = mkdtempSync(join(tmpdir(), 'dsh-primary-'))
-  const fallback = mkdtempSync(join(tmpdir(), 'dsh-fallback-'))
+test('本地有就用本地的，本地没有就用包里的', () => {
+  const bundled = mkdtempSync(join(tmpdir(), 'dsh-bundled-'))
+  const local = mkdtempSync(join(tmpdir(), 'dsh-local-'))
   try {
-    writeFileSync(join(fallback, 'to-spec.md'), '# 兜底\n\n来自用户目录的正文。\n')
+    writeFileSync(join(bundled, 'to-spec.md'), '# 包内\n\n包里的正文。\n')
 
-    assert.equal(readSkill('to-spec', primary, null), null)
-    assert.match(readSkill('to-spec', primary, fallback), /来自用户目录/)
+    // 本地没有 → 用包里的
+    assert.match(readSkill('to-spec', bundled, local), /包里的正文/)
+
+    // 本地有了 → 用本地的
+    writeFileSync(join(local, 'to-spec.md'), '# 本地\n\n本地的正文。\n')
+    assert.match(readSkill('to-spec', bundled, local), /本地的正文/)
   } finally {
-    rmSync(primary, { recursive: true, force: true })
-    rmSync(fallback, { recursive: true, force: true })
+    rmSync(bundled, { recursive: true, force: true })
+    rmSync(local, { recursive: true, force: true })
   }
 })

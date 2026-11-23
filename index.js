@@ -13,7 +13,7 @@ import { EVIDENCE_TYPES, createProjectState } from './lib/project-state.js'
 import { createFsStore } from './lib/store.js'
 
 import { formatBlockReport } from './lib/format.js'
-import { FLOW, flowBrief, flowSkillRegistrations } from './lib/skills.js'
+import { FLOW, flowBrief, flowSkillRegistrations, readSkill } from './lib/skills.js'
 
 export const name = 'dsh-manager'
 
@@ -25,6 +25,7 @@ const TOOL_PLAN = 'manager_plan'
 const TOOL_RUN = 'manager_run'
 const TOOL_VERIFY = 'manager_verify'
 const TOOL_BLOCK = 'manager_block'
+const TOOL_FLOW_SKILL = 'manager_flow_skill'
 const COMMAND_NAME = 'manager'
 const STATUS_KEYWORD = 'status'
 const APPROVE_KEYWORD = 'approve'
@@ -264,6 +265,32 @@ export function apply(ctx) {
     },
   })
 
+  registerTool(ctx, stateFor, {
+    name: TOOL_FLOW_SKILL,
+    description:
+      '取建项目流程里某个技能的正文。本机装了就取本机那份，没装就取插件自带的那份。当技能本身不能被模型调用时用它。',
+    parameters: {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          enum: FLOW.map((skill) => skill.name),
+          description: '技能名',
+        },
+      },
+      required: ['name'],
+      additionalProperties: false,
+    },
+    async run(args) {
+      const name = String(args?.name ?? '')
+      const body = readSkill(name)
+      if (body === null) {
+        return { ok: false, problem: `找不到技能「${name}」的正文（本机和包里都没有）` }
+      }
+      return { ok: true, text: body }
+    },
+  })
+
   ctx.effect(
     () =>
       ctx.commands.register({
@@ -431,8 +458,8 @@ async function bootstrap(ctx, invocation) {
   const warning =
     shadowed.length === 0
       ? ''
-      : `\n\n注意：本机 ~/.agents/skills/ 里已装同名技能（${shadowed.join('、')}），它们是「只给用户」的，插件自带的那份没有生效。` +
-        `要让插件自带版本接手，把它们从 ~/.agents/skills/ 移走；否则这几步得你敲 /<技能名> 手动触发。`
+      : `\n\n注意：本机 ~/.agents/skills/ 里已装同名技能（${shadowed.join('、')}），它们是「只给用户」的，模型调不到。` +
+        `这几步请用工具 ${TOOL_FLOW_SKILL} 取正文（它本地优先、包里兜底），不要指望能直接调用同名技能。`
 
   return { kind: 'success', text: `${header}${warning}\n\n${brief}` }
 }
