@@ -138,7 +138,7 @@ test('回报缺摘要时被拒', async () => {
 test('判为阻塞却没有理由时被拒', async () => {
   const { state } = approvedProject(async () => ({
     ok: true,
-    report: { status: 'blocked', summary: '卡住了', evidence: [] },
+    report: { status: 'blocked', summary: '卡住了', evidence: ['command：试过一次'] },
   }))
 
   const result = await state.dispatchNext()

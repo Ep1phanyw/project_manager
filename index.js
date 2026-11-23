@@ -71,7 +71,7 @@ export function apply(ctx) {
   }
 
   registerTool(ctx, stateFor, {
-    name: 'manager_start',
+    name: TOOL_START,
     description:
       '启动一个项目：写下它的目标与逐条验收标准。状态落在会话工作区的 .scratch/ 下。项目名同时用作目录名，重名会被拒绝。',
     parameters: {
@@ -100,7 +100,7 @@ export function apply(ctx) {
   })
 
   registerTool(ctx, stateFor, {
-    name: 'manager_plan',
+    name: TOOL_PLAN,
     description:
       '提交项目计划：每个部分声明它依赖哪些部分、会改哪些文件、用什么证据说明自己做完了。依赖成环、或者两个部分改同一批文件却没有先后关系，都会被拒绝。',
     parameters: {
@@ -251,7 +251,7 @@ function childRunner(ctx, parent, workspace) {
       prompt: [{ type: 'text', text: prompt }],
       parent,
       cwd: workspace,
-      signal: signal ?? new AbortController().signal,
+      signal,
       delivery: 'parent',
       outputSchema: REPORT_SCHEMA,
     })
@@ -276,22 +276,7 @@ function childRunner(ctx, parent, workspace) {
   }
 }
 
+/** 回报只认 outputSchema 校验过的结构化对象；拿不到就是没按约定回报。 */
 function readReport(result) {
-  if (result?.structured && typeof result.structured === 'object') return result.structured
-
-  const text = Array.isArray(result?.output)
-    ? result.output
-        .filter((block) => block?.type === 'text')
-        .map((block) => block.text)
-        .join('\n')
-    : ''
-
-  const blocks = [...text.matchAll(/```json\s*([\s\S]*?)```/g)]
-  if (blocks.length === 0) return null
-
-  try {
-    return JSON.parse(blocks[blocks.length - 1][1])
-  } catch {
-    return null
-  }
+  return result?.structured && typeof result.structured === 'object' ? result.structured : null
 }
