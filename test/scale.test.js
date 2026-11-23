@@ -153,6 +153,75 @@ test('验收通过时会打快照，失败不会', async () => {
   assert.deepEqual(calls, ['P1'])
 })
 
+test('放弃项目要写理由，且只有用户能放弃', () => {
+  const store = memoryStore()
+  const state = stateOn(store)
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+
+  assert.equal(state.abandonProject({ by: 'model', reason: '不想做了' }).ok, false)
+  assert.match(state.abandonProject({ by: 'model', reason: '不想做了' }).problem, /只有用户/)
+
+  const noReason = state.abandonProject({ by: 'user' })
+  assert.equal(noReason.ok, false)
+
+  const ok = state.abandonProject({ by: 'user', reason: '方向变了' })
+  assert.equal(ok.ok, true, ok.problem)
+})
+
+test('放弃之后别的操作全停手，但状态还看得见', () => {
+  const store = memoryStore()
+  const state = stateOn(store)
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  state.abandonProject({ by: 'user', reason: '方向变了' })
+
+  const status = state.status()
+  assert.equal(status.ok, true)
+  assert.equal(status.project.phase, 'abandoned')
+
+  const plan = state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
+  assert.equal(plan.ok, false)
+  assert.match(plan.problem, /已经放弃/)
+
+  const again = state.abandonProject({ by: 'user', reason: '再放弃一次' })
+  assert.equal(again.ok, false)
+})
+
+test('改完验收标准后用 reopenCriteria 重新纳入流程，强制重新批准', () => {
+  const store = memoryStore()
+  const state = stateOn(store)
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
+  state.approvePlan({ by: 'user' })
+
+  // 用户手改验收标准：指纹对不上，派分被挡住
+  store.write('demo', { acceptance: '# 验收标准\n\n- [AC-1] 一条改过了\n' })
+
+  const blocked = stateOn(store).nextPart()
+  assert.equal(blocked.ok, false)
+  assert.match(blocked.problem, /改过/)
+
+  const reopened = state.reopenCriteria({ by: 'user' })
+  assert.equal(reopened.ok, true, reopened.problem)
+  assert.equal(reopened.count, 1)
+
+  const again = stateOn(store)
+  const approved = again.approvePlan({ by: 'user' })
+  assert.equal(approved.ok, true, approved.problem)
+  const next = again.nextPart()
+  assert.equal(next.ok, true, next.problem)
+})
+
+test('reopenCriteria 只认用户', () => {
+  const store = memoryStore()
+  const state = stateOn(store)
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+
+  const result = state.reopenCriteria({ by: 'model' })
+
+  assert.equal(result.ok, false)
+  assert.match(result.problem, /只有用户/)
+})
+
 test('快照自己抛错不影响验收', async () => {
   const store = memoryStore()
   const state = createProjectState({

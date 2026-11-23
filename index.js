@@ -36,6 +36,8 @@ const APPROVE_KEYWORD = 'approve'
 const REJECT_KEYWORD = 'reject'
 const CONFIRM_KEYWORD = 'confirm'
 const ACCEPT_KEYWORD = 'accept'
+const ABANDON_KEYWORD = 'abandon'
+const CRITERIA_KEYWORD = 'criteria'
 const DECLINE_KEYWORD = 'decline'
 const RESOLVE_KEYWORD = 'resolve'
 
@@ -382,6 +384,24 @@ export function apply(ctx, config) {
             const result = state.confirmPart({ by: 'user', project: targeted, reason: args })
             if (!result.ok) return { kind: 'error', text: result.problem }
             return { kind: 'success', text: `部分 ${result.part.id} 已确认，循环可以继续了。` }
+          }
+
+          if (keyword === ABANDON_KEYWORD) {
+            const result = state.abandonProject({ by: 'user', project: targeted, reason: args })
+            if (!result.ok) return { kind: 'error', text: result.problem }
+            return {
+              kind: 'success',
+              text: '项目已标记为放弃。状态文件留着当存档；要接着做请用别的名字重新 manager_start。',
+            }
+          }
+
+          if (keyword === CRITERIA_KEYWORD) {
+            const result = state.reopenCriteria({ by: 'user', project: targeted })
+            if (!result.ok) return { kind: 'error', text: result.problem }
+            return {
+              kind: 'success',
+              text: `已按当前的 acceptance.md 重新读入 ${result.count} 条验收标准，退回待批准 —— 用 /${COMMAND_NAME} approve 重新批准。`,
+            }
           }
 
           if (keyword === ACCEPT_KEYWORD) {
