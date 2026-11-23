@@ -5,6 +5,7 @@
  * 状态落在会话工作区的 `.scratch/` 下，是普通 markdown。
  */
 
+import { existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { formatStatus } from './lib/format.js'
@@ -84,6 +85,7 @@ export function apply(ctx) {
       store: createFsStore(join(workspace, '.scratch')),
       commandName: COMMAND_NAME,
       runChild: childRunner(ctx, agent, workspace),
+      hasOrigin: originChecker(workspace),
     })
   }
 
@@ -386,6 +388,18 @@ function childRunner(ctx, parent, workspace) {
         // 已经结束的激活无需再清理
       }
     }
+  }
+}
+
+/** 一个部分的来源，必须真的能在 .scratch/<项目>/issues/ 里找到。 */
+function originChecker(workspace) {
+  return (originId, slug) => {
+    const dir = join(workspace, '.scratch', slug, 'issues')
+    if (!existsSync(dir)) return false
+
+    return readdirSync(dir).some(
+      (name) => name === `${originId}.md` || name.startsWith(`${originId}-`),
+    )
   }
 }
 

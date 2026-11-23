@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -122,6 +122,36 @@ test('/manager reject 驳回后回到规划，并记下理由', async () => {
     const status = await commands[0].handler({ rawInput: '', agent: {} })
     assert.match(status.text, /规划/)
     assert.match(status.text, /第二部分太粗/)
+  } finally {
+    workspace.cleanup()
+  }
+})
+
+test('计划里的来源必须真的存在，写错编号会被拒', async () => {
+  const workspace = emptyWorkspace()
+  try {
+    const { tools } = install(workspace.dir)
+    const start = tools.find((tool) => tool.name === 'manager_start')
+    const plan = tools.find((tool) => tool.name === 'manager_plan')
+
+    await start.execute({ name: 'demo', goal: '做点事', acceptance: ['一条'] }, { agent: {} })
+
+    mkdirSync(join(workspace.dir, '.scratch', 'demo', 'issues'), { recursive: true })
+    writeFileSync(join(workspace.dir, '.scratch', 'demo', 'issues', '03-do-thing.md'), '# 03\n')
+
+    await plan.execute(
+      { parts: [{ title: '甲', origin: '03', files: ['a.js'], evidence: 'test' }] },
+      { agent: {} },
+    )
+
+    await assert.rejects(
+      () =>
+        plan.execute(
+          { parts: [{ title: '乙', origin: '99', files: ['b.js'], evidence: 'test' }] },
+          { agent: {} },
+        ),
+      /99/,
+    )
   } finally {
     workspace.cleanup()
   }
