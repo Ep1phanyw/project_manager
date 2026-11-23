@@ -58,15 +58,17 @@ test('装好之后注册了 /manager 命令与五个工具', () => {
   ])
 })
 
-test('/manager status 与裸 /manager 走同一条路径', async () => {
+test('/manager 在还没有项目时给出建项目的流程，而不是一句报错', async () => {
   const workspace = emptyWorkspace()
   try {
     const { commands } = install(workspace.dir)
 
     for (const rawInput of ['', 'status', '  status  ']) {
       const result = await commands[0].handler({ rawInput, agent: {} })
-      assert.equal(result.kind, 'error', `${JSON.stringify(rawInput)} 不该被当成项目名`)
+      assert.equal(result.kind, 'success', `${JSON.stringify(rawInput)} 应该走引导`)
       assert.match(result.text, /还没有项目/)
+      assert.match(result.text, /grill-with-docs/)
+      assert.match(result.text, /manager_plan/)
     }
   } finally {
     workspace.cleanup()

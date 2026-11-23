@@ -12,6 +12,7 @@ import { EVIDENCE_TYPES, createProjectState } from './lib/project-state.js'
 import { createFsStore } from './lib/store.js'
 
 import { formatBlockReport } from './lib/format.js'
+import { flowBrief } from './lib/skills.js'
 
 export const name = 'dsh-manager'
 
@@ -308,7 +309,13 @@ export function apply(ctx) {
           const requested = keyword === STATUS_KEYWORD ? '' : raw
           const result = state.status(requested)
 
-          if (!result.ok) return { kind: 'error', text: result.problem }
+          if (!result.ok) {
+            // 没有项目时 /manager 不是「报个错」，而是把项目立起来的入口。
+            if (!requested && result.problem.includes('还没有项目')) {
+              return bootstrap(ctx, invocation)
+            }
+            return { kind: 'error', text: result.problem }
+          }
           return { kind: 'success', text: formatStatus(result.project) }
         },
       }),
@@ -377,6 +384,36 @@ function childRunner(ctx, parent, workspace) {
         // 已经结束的激活无需再清理
       }
     }
+  }
+}
+
+/** 还没项目时：把「grill → to-spec → to-tickets」这条流程交出去。 */
+async function bootstrap(ctx, invocation) {
+  const brief = flowBrief()
+  const queued = await nudgeSession(ctx, invocation.agent, brief)
+
+  const header = queued
+    ? '还没有项目。这条流程已经排进本会话，主对话接下来会按顺序开始访谈。'
+    : '还没有项目。流程在下面；我没能自动排进会话 —— 你回一句「开始」，我就照它做。'
+
+  return { kind: 'success', text: `${header}\n\n${brief}` }
+}
+
+/** 给当前会话排一条消息，让它真的动起来。失败就返回 false，由调用方退化。 */
+async function nudgeSession(ctx, agent, text) {
+  try {
+    const controller = ctx.get('sessionController')
+    if (!controller || typeof controller.prompt !== 'function') return false
+
+    await controller.prompt({
+      requestId: `dsh-manager-flow-${Date.now()}`,
+      sessionId: agent.id,
+      mode: 'queue',
+      content: [{ type: 'text', text }],
+    })
+    return true
+  } catch {
+    return false
   }
 }
 

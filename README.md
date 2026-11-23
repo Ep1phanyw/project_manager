@@ -47,7 +47,7 @@
 
 | 命令 | 作用 |
 | --- | --- |
-| `/manager` 或 `/manager status` | 看状态；裸 `/manager` 与 `status` 走同一条路径。 |
+| `/manager` 或 `/manager status` | 有项目时看状态；**还没有项目时**给出「grill-with-docs → to-spec → to-tickets → 提交计划」这条建项目流程，并尝试把它排进本会话。 |
 | `/manager <项目名>` | 同时有多个项目时，指定要看哪一个。项目名里的空白会变成目录名里的 `-`。 |
 | `/manager approve` | 批准计划，只认用户。计划没到「待批准」、或已经不合法时会被拒。 |
 | `/manager reject [理由]` | 驳回计划，回到规划阶段。理由必填。 |
