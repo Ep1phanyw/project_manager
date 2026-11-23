@@ -108,6 +108,6 @@ npm publish --access public
 
 - `engines.dsh` 的范围只在一个版本（0.2.3-alpha.2）上跑过 —— 上界 `<0.3.0` 是声明，不是实测
 - 全部测试只在 Windows 上跑过，Linux/macOS 靠 CI 补
-- git 快照用真实仓库验证过，但只在 `D:\plugin` 这一个仓库上
+- git 快照用真实仓库验证过，但只在一个仓库上
 - 打包自检与 CI 配置都对，但 CI **一次都没真正跑过**（还没有仓库）
 - 没有对「DSH 升级后插件能不能装上」做过回归；`/manager doctor` 只能事后告诉你缺了什么
