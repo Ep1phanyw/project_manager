@@ -21,12 +21,19 @@ test('包里自带的三个技能都能读到正文', () => {
   }
 })
 
-test('注册用原名，且模型与用户都能调用', () => {
+test('每个技能注册两份：原名 + 前缀别名，都可被模型调用', () => {
   const registrations = flowSkillRegistrations(bundledRoot(), null)
 
   assert.deepEqual(
     registrations.map((item) => item.name),
-    ['grill-with-docs', 'to-spec', 'to-tickets'],
+    [
+      'grill-with-docs',
+      'dsh-manager-grill',
+      'to-spec',
+      'dsh-manager-spec',
+      'to-tickets',
+      'dsh-manager-tickets',
+    ],
   )
   for (const item of registrations) {
     assert.equal(item.invocation.modelInvocable, true)
@@ -69,7 +76,9 @@ test('流程指令是短的：只点原名，不把正文塞进来', () => {
     assert.match(brief, /to-tickets/)
     assert.match(brief, /manager_plan/)
     assert.match(brief, /来源：/)
-    assert.ok(brief.split('\n').length < 15, '指令应该短')
+    assert.match(brief, /dsh-manager-grill/)
+    assert.match(brief, /原名 grill-with-docs/)
+    assert.ok(brief.split('\n').length < 20, '指令应该短')
     assert.doesNotMatch(brief, /正文 grill-with-docs/)
   } finally {
     cleanup()

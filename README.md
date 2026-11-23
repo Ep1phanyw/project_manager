@@ -41,15 +41,17 @@
 
 `/manager` 在没有项目时会用到三个技能，它们的正文**随本插件一起分发**（在包的 `skills/` 目录），装上就有，不需要另装：
 
-| 技能 | 用来做什么 |
-| --- | --- |
-| `grill-with-docs` | 把需求问清楚，边问边把术语与决定落进 `GLOSSARY.md` 与 ADR |
-| `to-spec` | 把访谈收敛成 spec，写到 `.scratch/<项目名>/spec.md` |
-| `to-tickets` | 把 spec 拆成带先后关系的部分，写成 `.scratch/<项目名>/issues/NN-*.md` |
+| 原名 | 插件里的别名 | 用来做什么 |
+| --- | --- | --- |
+| `grill-with-docs` | `dsh-manager-grill` | 把需求问清楚，边问边把术语与决定落进 `GLOSSARY.md` 与 ADR |
+| `to-spec` | `dsh-manager-spec` | 把访谈收敛成 spec，写到 `.scratch/<项目名>/spec.md` |
+| `to-tickets` | `dsh-manager-tickets` | 把 spec 拆成带先后关系的部分，写成 `.scratch/<项目名>/issues/NN-*.md` |
 
-插件加载时把它们注册进技能目录（原名、模型与用户都可调用），所以对话里只出现一个短标记，正文走技能通道。
+**为什么注册两份**：技能目录里同名是「先注册者赢」。你本机若已装过同名技能（尤其它们标着 `disable-model-invocation: true`），插件用原名注册的那份就永远抢不到，模型也就调不到。带前缀的别名不会撞车，所以在任何机器上都可用。`/manager` 的流程指令指的是**别名**，就是因为这个。
 
-本机 `~/.agents/skills/` 里**也**装了同名技能时，用哪一份由 DSH 的技能分层顺序决定 —— 两份都可用，不会报错。想覆盖成自己改过的版本，改本地那份即可。
+两者的正文来源一致：**本地优先**（`~/.agents/skills/`，你改过就生效），本地没有才用包里那份。
+
+本机也有同名技能时，只是多出三行 `dsh-manager-*` 条目，不会报错。
 
 ### 来源与署名
 
