@@ -1,3 +1,8 @@
 node_modules/
 *.log
 .DS_Store
+
+# 验证与评审用的临时产物，不进版本管理
+.scratch/smoke-*/
+.scratch/*.mjs
+.probe-*.mjs

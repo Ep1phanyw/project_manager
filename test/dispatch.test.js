@@ -183,11 +183,8 @@ test('记录会落盘，换个实例仍能读回状态与轮次', async () => {
   assert.equal(project.records[0].sessionId, '')
 })
 
-test('重试时轮次递增，历史不丢', async () => {
-  const replies = [
-    { ok: true, report: { status: 'blocked', summary: '缺登录接口文档', evidence: ['command：ls docs'], blockedReason: '需要接口文档' } },
-    { ok: true, report: GOOD_REPORT },
-  ]
+test('子对话失败后可以重试，轮次递增且历史不丢', async () => {
+  const replies = [{ ok: false, problem: '模型超时' }, { ok: true, report: GOOD_REPORT }]
   const { state } = approvedProject(async () => replies.shift())
 
   await state.dispatchNext()
@@ -197,7 +194,7 @@ test('重试时轮次递增，历史不丢', async () => {
 
   const { project } = state.status()
   assert.equal(project.records.length, 2)
-  assert.equal(project.records[0].status, 'blocked')
+  assert.equal(project.records[0].status, 'failed')
   assert.equal(project.records[1].status, 'done')
 })
 
@@ -233,6 +230,35 @@ test('没配子对话执行器时明确报错，而不是假装派了', async ()
 
   assert.equal(result.ok, false)
   assert.match(result.problem, /子对话/)
+})
+
+test('第一个部分完成后，下一次派分轮到它后面的部分', async () => {
+  const { state } = approvedProject(async () => ({ ok: true, report: GOOD_REPORT }))
+
+  const first = await state.dispatchNext()
+  const second = await state.dispatchNext()
+
+  assert.equal(first.part.id, 'P1')
+  assert.equal(second.part.id, 'P2')
+})
+
+test('部分报了阻塞时停下，不会反复重跑同一个部分', async () => {
+  const { state } = approvedProject(async () => ({
+    ok: true,
+    report: {
+      status: 'blocked',
+      summary: '缺接口文档',
+      evidence: ['command：ls docs（空）'],
+      blockedReason: '需要用户提供接口文档',
+    },
+  }))
+
+  assert.equal((await state.dispatchNext()).ok, true)
+
+  const again = await state.dispatchNext()
+
+  assert.equal(again.ok, false)
+  assert.match(again.problem, /阻塞/)
 })
 
 test('状态文本里能看到每个部分最近一次的结果', async () => {
