@@ -11,6 +11,8 @@ import { formatStatus } from './lib/format.js'
 import { EVIDENCE_TYPES, createProjectState } from './lib/project-state.js'
 import { createFsStore } from './lib/store.js'
 
+import { formatBlockReport } from './lib/format.js'
+
 export const name = 'dsh-manager'
 
 /** 三个都是硬依赖：少一个就不该半装好地跑起来。 */
@@ -204,6 +206,14 @@ export function apply(ctx) {
       const result = state.verifyPart(args)
       if (!result.ok) return result
 
+      if (result.blocked) {
+        const report = state.blockReport({ project: args?.project })
+        const text = report.ok
+          ? formatBlockReport(report.blocked)
+          : `部分 ${result.part.id} 已判定阻塞。`
+        return { ok: true, text: `连续两次因同一原因失败，判定阻塞。\n\n${text}` }
+      }
+
       return {
         ok: true,
         text:
@@ -236,7 +246,7 @@ export function apply(ctx) {
       if (!args?.condition) {
         const report = state.blockReport({ project: args?.project })
         if (!report.ok) return report
-        return { ok: true, text: report.text }
+        return { ok: true, text: formatBlockReport(report.blocked) }
       }
 
       const result = state.requestBlock(args)

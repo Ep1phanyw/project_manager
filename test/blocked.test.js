@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import { createProjectState } from '../lib/project-state.js'
+import { formatBlockReport } from '../lib/format.js'
 import { memoryStore } from './memory-store.js'
 
 const AT = '2026-11-23T06:00:00.000Z'
@@ -194,12 +195,65 @@ test('阻塞报告说清卡在哪、试过什么、需要你给什么', async ()
   const report = state.blockReport()
 
   assert.equal(report.ok, true)
-  assert.match(report.text, /P1/)
-  assert.match(report.text, /连续两次/)
-  assert.match(report.text, /证据里没有测试输出/)
-  assert.match(report.text, /试过/)
-  assert.match(report.text, /第 1 次/)
-  assert.match(report.text, /需要你/)
+  assert.equal(report.blocked.length, 1)
+
+  const text = formatBlockReport(report.blocked)
+  assert.match(text, /P1/)
+  assert.match(text, /连续两次/)
+  assert.match(text, /证据里没有测试输出/)
+  assert.match(text, /试过/)
+  assert.match(text, /第 1 次/)
+  assert.match(text, /需要你/)
+})
+
+test('阻塞情形不接受原型上的名字', () => {
+  const { state } = scenario()
+
+  for (const condition of ['constructor', '__proto__', 'toString']) {
+    const result = state.requestBlock({ part: 'P1', condition, detail: '随便' })
+    assert.equal(result.ok, false, `${condition} 应被拒`)
+  }
+})
+
+test('已经验收通过的部分不能再报阻塞', async () => {
+  const { state } = scenario()
+  await state.dispatchNext()
+  state.verifyPart({ part: 'P1', verdict: 'pass', reason: 'AC-1 对上' })
+
+  const result = state.requestBlock({
+    part: 'P1',
+    condition: 'missing-user-input',
+    detail: '想要点东西',
+  })
+
+  assert.equal(result.ok, false)
+  assert.match(result.problem, /验收通过/)
+})
+
+test('有部分处于阻塞时不能改计划 —— 改计划不能替用户裁决', async () => {
+  const { state } = scenario()
+  await state.dispatchNext()
+  state.verifyPart({ part: 'P1', verdict: 'fail', reason: '同一个原因' })
+  await state.dispatchNext()
+  state.verifyPart({ part: 'P1', verdict: 'fail', reason: '同一个原因' })
+
+  const result = state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
+
+  assert.equal(result.ok, false)
+  assert.match(result.problem, /阻塞/)
+})
+
+test('批准之后手改验收标准会被发现，必须先重新批准', () => {
+  const { store, state } = scenario()
+
+  store.write('demo', {
+    acceptance: '# 验收标准\n\n- [AC-1] 能登录\n- [AC-2] 悄悄加一条\n',
+  })
+
+  const next = state.nextPart()
+
+  assert.equal(next.ok, false)
+  assert.match(next.problem, /验收标准/)
 })
 
 test('没有阻塞时 blockReport 说没有', () => {
