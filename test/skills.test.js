@@ -38,6 +38,7 @@ test('每个技能注册两份：原名 + 前缀别名，都可被模型调用',
   for (const item of registrations) {
     assert.equal(item.invocation.modelInvocable, true)
     assert.equal(item.invocation.userInvocable, true)
+    assert.equal(item.source, 'bundled', 'source 缺了会让加载时报错')
     assert.match(item.content, /第 \d 步/)
   }
 })
