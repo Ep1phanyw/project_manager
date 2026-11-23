@@ -20,15 +20,18 @@ function fakeInstall(version) {
 test('从安装目录读真实版本', () => {
   const { dir, cleanup } = fakeInstall('0.2.3-alpha.2')
   try {
-    assert.equal(detectDshVersion({ DSH_INSTALL_DIR: dir }), '0.2.3-alpha.2')
+    assert.deepEqual(detectDshVersion({ DSH_INSTALL_DIR: dir }), { version: '0.2.3-alpha.2', source: 'DSH_INSTALL_DIR' })
   } finally {
     cleanup()
   }
 })
 
 test('没设 DSH_INSTALL_DIR 或读不到时返回空串，而不是抛错', () => {
-  assert.equal(detectDshVersion({}), '')
-  assert.equal(detectDshVersion({ DSH_INSTALL_DIR: 'D:\\不存在' }), '')
+  assert.deepEqual(detectDshVersion({}, undefined, {}), { version: '', source: '' })
+  assert.deepEqual(detectDshVersion({ DSH_INSTALL_DIR: 'D:\\不存在' }, undefined, {}), {
+    version: '',
+    source: '',
+  })
 })
 
 test('能从本插件自己的 package.json 读出期望范围', () => {
@@ -58,7 +61,7 @@ test('报告里逐项列出能力，缺的标出来并给结论', () => {
     ],
     config: { snapshot: 'files', evidenceTypes: ['test', 'build'] },
     git: { ok: true, note: 'git version 2.50.0' },
-    skills: { registered: ['project-manager-grill'], shadowed: ['grill-with-docs'] },
+    skills: { original: ['grill-with-docs'], alias: ['project-manager-grill'], shadowed: ['grill-with-docs'] },
   })
 
   assert.match(text, /DSH 版本：0\.2\.3-alpha\.2/)
@@ -66,6 +69,7 @@ test('报告里逐项列出能力，缺的标出来并给结论', () => {
   assert.match(text, /在  commands\.register/)
   assert.match(text, /缺  subagents\.startActivation　—— 服务不在/)
   assert.match(text, /git：可用/)
+  assert.match(text, /别名 1 个/)
   assert.match(text, /被本机同名技能盖住：grill-with-docs/)
   assert.match(text, /结论：缺 1 项能力/)
 })
@@ -79,7 +83,7 @@ test('能力齐全时说可以正常用', () => {
     capabilities: [{ name: 'commands.register', ok: true }],
     config: { snapshot: 'off', evidenceTypes: ['test'] },
     git: { ok: false, note: '找不到 git' },
-    skills: { registered: [], shadowed: [] },
+    skills: { original: [], alias: [], shadowed: [] },
   })
 
   assert.match(text, /结论：能力齐全/)
@@ -95,7 +99,7 @@ test('版本超出范围时提示可能缺接口', () => {
     capabilities: [{ name: 'commands.register', ok: true }],
     config: { snapshot: 'files', evidenceTypes: ['test'] },
     git: { ok: true, note: 'ok' },
-    skills: { registered: [], shadowed: [] },
+    skills: { original: [], alias: [], shadowed: [] },
   })
 
   assert.match(text, /不在范围内 —— 可能缺接口/)

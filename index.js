@@ -103,10 +103,14 @@ export function apply(ctx, config) {
   async function doctorReport(ctxRef, agent) {
     const workspace = await ctxRef.workingDirectory.ensure(agent)
     const git = runCommandCapture('git --version', { cwd: workspace })
+    const registrations = flowSkillRegistrations()
     const skills = ctxRef.get?.('skills')
 
+    const detected = detectDshVersion()
+
     return formatDoctorReport({
-      version: detectDshVersion(),
+      version: detected.version,
+      versionSource: detected.source,
       expected: detectExpectedRange(),
       workspace,
       projects: createFsStore(join(workspace, '.scratch')).listProjects(),
@@ -141,7 +145,12 @@ export function apply(ctx, config) {
       config: { snapshot: snapshotMode, evidenceTypes },
       git: { ok: git.ok, note: git.ok ? git.output.split(/\r?\n/)[0] : git.output || '跑不起来' },
       skills: {
-        registered: flowSkillRegistrations().map((skill) => skill.name),
+        original: FLOW.map((skill) => skill.name).filter((name) =>
+          registrations.some((item) => item.name === name),
+        ),
+        alias: FLOW.map((skill) => skill.alias).filter((name) =>
+          registrations.some((item) => item.name === name),
+        ),
         shadowed: await shadowedSkills(ctxRef),
       },
     })
