@@ -305,35 +305,36 @@ export function apply(ctx) {
           const raw = invocation.rawInput.trim()
           const [keyword, ...rest] = raw.split(/\s+/)
 
+          // 多个项目时用 @项目名 指定；不写就按「只有一个项目」处理。
+          const targeted = rest[0]?.startsWith('@') ? rest[0].slice(1) : undefined
+          const args = (targeted === undefined ? rest : rest.slice(1)).join(' ')
+
           if (keyword === APPROVE_KEYWORD) {
-            const result = state.approvePlan({
-              by: 'user',
-              project: rest.join(' ').trim() || undefined,
-            })
+            const result = state.approvePlan({ by: 'user', project: targeted ?? (args || undefined) })
             if (!result.ok) return { kind: 'error', text: result.problem }
             return { kind: 'success', text: '计划已批准，可以开始派分部分了。' }
           }
 
           if (keyword === REJECT_KEYWORD) {
-            const result = state.rejectPlan({ by: 'user', reason: rest.join(' ') })
+            const result = state.rejectPlan({ by: 'user', project: targeted, reason: args })
             if (!result.ok) return { kind: 'error', text: result.problem }
             return { kind: 'success', text: '计划已驳回，回到规划阶段，可以重新提交。' }
           }
 
           if (keyword === CONFIRM_KEYWORD) {
-            const result = state.confirmPart({ by: 'user', reason: rest.join(' ') })
+            const result = state.confirmPart({ by: 'user', project: targeted, reason: args })
             if (!result.ok) return { kind: 'error', text: result.problem }
             return { kind: 'success', text: `部分 ${result.part.id} 已确认，循环可以继续了。` }
           }
 
           if (keyword === DECLINE_KEYWORD) {
-            const result = state.declinePart({ by: 'user', reason: rest.join(' ') })
+            const result = state.declinePart({ by: 'user', project: targeted, reason: args })
             if (!result.ok) return { kind: 'error', text: result.problem }
             return { kind: 'success', text: `部分 ${result.part.id} 已打回，会重新派分。` }
           }
 
           if (keyword === RESOLVE_KEYWORD) {
-            const result = state.resolvePart({ by: 'user', reason: rest.join(' ') })
+            const result = state.resolvePart({ by: 'user', project: targeted, reason: args })
             if (!result.ok) return { kind: 'error', text: result.problem }
             return { kind: 'success', text: `部分 ${result.part.id} 的阻塞已解除，可以重新派分。` }
           }

@@ -158,6 +158,29 @@ test('计划里的来源必须真的存在，写错编号会被拒', async () =>
   }
 })
 
+test('多个项目时用 @项目名 指定，驳回不会因为「有多个项目」而变成死路', async () => {
+  const workspace = emptyWorkspace()
+  try {
+    const { tools, commands } = install(workspace.dir)
+    const start = tools.find((tool) => tool.name === 'manager_start')
+    const plan = tools.find((tool) => tool.name === 'manager_plan')
+
+    for (const name of ['one', 'two']) {
+      await start.execute({ name, goal: '做点事', acceptance: ['一条'] }, { agent: {} })
+      await plan.execute(
+        { project: name, parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] },
+        { agent: {} },
+      )
+    }
+
+    const result = await commands[0].handler({ rawInput: 'reject @two 太粗了', agent: {} })
+
+    assert.equal(result.kind, 'success', result.text)
+  } finally {
+    workspace.cleanup()
+  }
+})
+
 test('插件卸载后命令与工具都不再注册', () => {
   const { tools, commands, disposers } = install('D:\\plugin')
 
