@@ -67,6 +67,58 @@ test('/manager status 与裸 /manager 走同一条路径', async () => {
   }
 })
 
+test('/manager approve 走用户路径，批准后阶段变成执行', async () => {
+  const workspace = emptyWorkspace()
+  try {
+    const { tools, commands } = install(workspace.dir)
+    const start = tools.find((tool) => tool.name === 'manager_start')
+    const plan = tools.find((tool) => tool.name === 'manager_plan')
+
+    await start.execute(
+      { name: 'demo', goal: '做点事', acceptance: ['一条'] },
+      { agent: {} },
+    )
+    await plan.execute(
+      { parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] },
+      { agent: {} },
+    )
+
+    assert.match((await commands[0].handler({ rawInput: '', agent: {} })).text, /待批准/)
+
+    const approved = await commands[0].handler({ rawInput: 'approve', agent: {} })
+    assert.equal(approved.kind, 'success')
+    assert.match((await commands[0].handler({ rawInput: '', agent: {} })).text, /执行/)
+  } finally {
+    workspace.cleanup()
+  }
+})
+
+test('/manager reject 驳回后回到规划，并记下理由', async () => {
+  const workspace = emptyWorkspace()
+  try {
+    const { tools, commands } = install(workspace.dir)
+    await tools
+      .find((tool) => tool.name === 'manager_start')
+      .execute({ name: 'demo', goal: '做点事', acceptance: ['一条'] }, { agent: {} })
+    await tools
+      .find((tool) => tool.name === 'manager_plan')
+      .execute({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] }, { agent: {} })
+
+    const rejected = await commands[0].handler({
+      rawInput: 'reject 第二部分太粗',
+      agent: {},
+    })
+
+    assert.equal(rejected.kind, 'success')
+
+    const status = await commands[0].handler({ rawInput: '', agent: {} })
+    assert.match(status.text, /规划/)
+    assert.match(status.text, /第二部分太粗/)
+  } finally {
+    workspace.cleanup()
+  }
+})
+
 test('插件卸载后命令与工具都不再注册', () => {
   const { tools, commands, disposers } = install('D:\\plugin')
 

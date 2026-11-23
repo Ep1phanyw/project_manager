@@ -18,6 +18,8 @@ export const inject = ['commands', 'tools', 'workingDirectory']
 
 const COMMAND_NAME = 'manager'
 const STATUS_KEYWORD = 'status'
+const APPROVE_KEYWORD = 'approve'
+const REJECT_KEYWORD = 'reject'
 
 /** 两个工具的结果形状一致：一句给人看的话。 */
 const TEXT_OUTPUT = {
@@ -121,12 +123,28 @@ export function apply(ctx) {
       ctx.commands.register({
         name: COMMAND_NAME,
         description:
-          '查看项目状态、验收标准与计划：/manager 或 /manager status；多个项目时用 /manager <项目名>',
-        input: { hint: '[status | 项目名]' },
+          '项目状态、计划与审批：/manager（或 status）看状态，/manager approve 批准计划，/manager reject [理由] 驳回，/manager <项目名> 指定项目',
+        input: { hint: '[status | approve | reject [理由] | 项目名]' },
         async handler(invocation) {
           const state = await stateFor(invocation.agent)
           const raw = invocation.rawInput.trim()
-          const result = state.status(raw === STATUS_KEYWORD ? '' : raw)
+          const [keyword, ...rest] = raw.split(/\s+/)
+
+          if (keyword === APPROVE_KEYWORD) {
+            const result = state.approvePlan({ by: 'user' })
+            if (!result.ok) return { kind: 'error', text: result.problem }
+            return { kind: 'success', text: '计划已批准，可以开始派分部分了。' }
+          }
+
+          if (keyword === REJECT_KEYWORD) {
+            const result = state.rejectPlan({ by: 'user', reason: rest.join(' ') })
+            if (!result.ok) return { kind: 'error', text: result.problem }
+            return { kind: 'success', text: '计划已驳回，回到规划阶段，可以重新提交。' }
+          }
+
+          // 项目名可能带空格，所以这里用整行而不是第一个词。
+          const requested = keyword === STATUS_KEYWORD ? '' : raw
+          const result = state.status(requested)
 
           if (!result.ok) return { kind: 'error', text: result.problem }
           return { kind: 'success', text: formatStatus(result.project) }
