@@ -2,7 +2,8 @@ node_modules/
 *.log
 .DS_Store
 
-# 验证与评审用的临时产物，不进版本管理
-.scratch/smoke-*/
-.scratch/*.mjs
+# 这个插件自己的开发记录（spec 与票），不公开
+.scratch/
+
+# 验证与评审用的临时产物
 .probe-*.mjs
