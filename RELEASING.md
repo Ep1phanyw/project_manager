@@ -16,16 +16,54 @@
 
 ## 0.5 怎么被人搜到
 
-包名里没有 `dsh`，所以**必须靠标记补**。三处都要做：
+包名里没有 `dsh`，所以要靠标记补。两处：
 
 | 位置 | 写什么 | 为什么 |
 | --- | --- | --- |
-| **GitHub 仓库 Topics** | **`dsh-plugin`（必须）**、`deepseek-harness`、`dsh`、`cordis`、`ai-agent` | `dsh-plugin` 是 DeepSeek 官方识别 DSH 插件的 topic，**没打就等于不存在** |
-| `package.json` → `keywords` | `dsh`、`deepseek-harness`、`dsh-plugin`、`cordis`、`project`、`orchestration`、`subagents`、`acceptance` | npm 站内搜索 |
-| README 首段 | 明确写出「DeepSeek Harness（DSH）插件」 | 人和搜索都会读第一段 |
+| **GitHub 仓库 Topics** | **`dsh-plugin`（必须）**、`deepseek-harness`、`dsh`、`cordis` | `dsh-plugin` 是识别 DSH 插件的 topic；没打就等于不存在 |
+| `package.json` → `keywords` | `dsh`、`deepseek-harness`、`dsh-plugin`、`cordis` 等（已有 8 个） | npm 站内搜索 |
 
-另有一个比 npm 搜索更重要的渠道：DSH 内置的 **dshmarket** 插件市场（支持一键装）。
-它有自己的收录方式，**发布后要去查怎么被它收录**，否则别人在市场里搜不到你。
+## 0.6 进 dshmarket（DSH 内置插件市场）
+
+**查清了：不是投稿给市场，是给精选列表提 PR。**
+
+市场（dshmarket）的插件目录**就是**另一份精选列表，其 README 第 167 行原话：
+
+> **这个仓库是市场应用本身，不是插件目录。** 市场里的插件列表来自精选列表
+> [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)
+> ——想让你的插件上架，请去**那边**提 PR（在列表里加一条即可，站点和本市场会自动收录，
+> 通常一天内生效）。请不要往本仓库提插件条目。
+
+而且市场**只允许安装列表内的来源**（安装弹窗明确拒绝其它来源），所以：
+
+> **不进这份列表 = 市场里搜不到、也装不了。**
+
+### 怎么提
+
+在 <https://github.com/awesome-dsh-plugin/awesome-dsh-plugin> 的合适分类下加一条：
+
+```
+* <GitHub 用户名>/<仓库名> - 一句话英文描述，说清它做什么
+```
+
+- **分类建议**：`Workflow & Automation`（备选 `Development & Runtime`）
+- 描述要和列表里其它条目同风格：一句英文，先讲它做什么
+- 别写营销词。列表的审核会**对着源码核**：「如果描述说 46 个工具，会有人去数」
+
+### 收录门槛（原文四条）
+
+1. 能用 `dsh plugin add` 装上（声明了 `dsh.bundle` manifest）—— 我们满足
+2. 做的事和那行描述一致
+3. 分类对
+4. 有维护
+
+**不是永久的**：仓库消失、停止维护、坏掉会被移除。
+
+### 另有一条更快的索引通道
+
+dsh 0.2.1+ 的「插件 → 发现 → 索引源」里可以添加
+`https://cdn.jsdelivr.net/npm/dsh-plugin-catalog/index.json` —— 那是同一份列表的
+format-1 索引，放在 npm 上分发。**这只影响本地能不能搜到，不替代上面的 PR**。
 
 ## 1. 本地必须全绿
 
