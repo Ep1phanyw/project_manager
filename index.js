@@ -39,7 +39,10 @@ export function apply(ctx) {
   /** 每次调用都按它所在会话的工作区解析状态目录，状态天然跟随会话。 */
   async function stateFor(agent) {
     const workspace = await ctx.workingDirectory.ensure(agent)
-    return createProjectState({ store: createFsStore(join(workspace, '.scratch')) })
+    return createProjectState({
+      store: createFsStore(join(workspace, '.scratch')),
+      commandName: COMMAND_NAME,
+    })
   }
 
   registerTool(ctx, stateFor, {
@@ -131,7 +134,10 @@ export function apply(ctx) {
           const [keyword, ...rest] = raw.split(/\s+/)
 
           if (keyword === APPROVE_KEYWORD) {
-            const result = state.approvePlan({ by: 'user' })
+            const result = state.approvePlan({
+              by: 'user',
+              project: rest.join(' ').trim() || undefined,
+            })
             if (!result.ok) return { kind: 'error', text: result.problem }
             return { kind: 'success', text: '计划已批准，可以开始派分部分了。' }
           }

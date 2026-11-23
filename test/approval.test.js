@@ -145,19 +145,93 @@ test('模型侧发起的驳回同样被拒', () => {
   assert.equal(state.status().project.phase, 'awaiting-approval')
 })
 
-test('已批准的计划不能被直接覆盖，必须先驳回', () => {
+test('已批准的计划可以被改，但会留痕并退回待批准', () => {
   const { state } = withPlan()
   state.approvePlan({ by: 'user' })
 
-  const overwrite = state.submitPlan({
-    parts: [{ title: '偷偷换一份', files: ['a.js'], evidence: 'test' }],
+  const revised = state.submitPlan({
+    parts: [{ title: '换一份更细的', files: ['a.js'], evidence: 'test' }],
   })
 
-  assert.equal(overwrite.ok, false)
-  assert.match(overwrite.problem, /驳回/)
+  assert.equal(revised.ok, true)
+  assert.equal(revised.revised, true)
+
+  const { project } = state.status()
+  assert.equal(project.phase, 'awaiting-approval')
+  assert.equal(project.approvals.length, 2)
+  assert.equal(project.approvals[1].kind, 'revised')
 })
 
-test('有依赖时挑的是依赖已经满足的那个部分', () => {
+test('计划改过之后必须重新批准才能派分', () => {
+  const { state } = withPlan()
+  state.approvePlan({ by: 'user' })
+  state.submitPlan({ parts: [{ title: '换一份', files: ['a.js'], evidence: 'test' }] })
+
+  const blocked = state.nextPart()
+  assert.equal(blocked.ok, false)
+  assert.match(blocked.problem, /尚未批准/)
+
+  assert.equal(state.approvePlan({ by: 'user' }).ok, true)
+  assert.equal(state.nextPart().ok, true)
+})
+
+test('手改「阶段：」行骗不过派分闸门', () => {
+  const { store, state } = withPlan()
+  const { project } = store.read('demo')
+  store.write('demo', {
+    project: project.replace('阶段：awaiting-approval', '阶段：executing'),
+  })
+
+  const result = state.nextPart()
+
+  assert.equal(result.ok, false)
+  assert.match(result.problem, /尚未批准/)
+})
+
+test('审批记录被手改坏时不肯派分', () => {
+  const { store, state } = withPlan()
+  state.approvePlan({ by: 'user' })
+
+  const { project } = store.read('demo')
+  store.write('demo', { project: project.replace(/^- \S+ 批准$/m, '- 这一行看不懂') })
+
+  const result = state.nextPart()
+
+  assert.equal(result.ok, false)
+  assert.match(result.problem, /审批记录/)
+})
+
+test('计划读不出来时不能批准', () => {
+  const { store, state } = withPlan()
+  store.write('demo', { plan: '# 计划\n\n## [P1] 甲\n\n这不是字段行\n' })
+
+  const result = state.approvePlan({ by: 'user' })
+
+  assert.equal(result.ok, false)
+  assert.match(result.problem, /计划/)
+})
+
+test('驳回必须写理由', () => {
+  const { state } = withPlan()
+
+  const result = state.rejectPlan({ by: 'user', reason: '   ' })
+
+  assert.equal(result.ok, false)
+  assert.match(result.problem, /理由/)
+  assert.equal(state.status().project.phase, 'awaiting-approval')
+})
+
+test('驳回理由带换行时被拒 —— 否则审批记录会被写坏', () => {
+  const { state } = withPlan()
+
+  const result = state.rejectPlan({ by: 'user', reason: '第一行\n第二行' })
+
+  assert.equal(result.ok, false)
+  assert.match(result.problem, /换行/)
+  assert.equal(state.status().project.phase, 'awaiting-approval')
+})
+
+test('有依赖的部分先不派，先挑没有依赖的那个', () => {
   const store = memoryStore()
   const state = createProjectState({ store, now: () => Date.parse(AT) })
   state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
