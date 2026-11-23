@@ -4,7 +4,7 @@
 
 **Blocked by:** 07、08
 
-**Status:** in-review
+**Status:** done
 
 - [x] `/manager status` 显示项目当前阶段（规划 / 待批准 / 执行 / 待确认 / 阻塞 / 完成）
 - [x] `status` 显示每个部分的状态与重试次数
