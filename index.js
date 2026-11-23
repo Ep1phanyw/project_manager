@@ -595,7 +595,13 @@ function registerFlowSkills(ctx) {
   if (!skills || typeof skills.register !== 'function') return
 
   for (const skill of flowSkillRegistrations()) {
-    ctx.effect(() => skills.register(skill), `project_manager: ${skill.name} skill`)
+    // 一个技能注册不上，不该把整个插件拖下水 —— DSH 是「一个插件加载失败，
+    // 整条启动链就退出」的。技能名不合规那次已经真实发生过。
+    try {
+      ctx.effect(() => skills.register(skill), `project_manager: ${skill.name} skill`)
+    } catch {
+      continue
+    }
   }
 }
 

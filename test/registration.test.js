@@ -199,6 +199,47 @@ test('查询阻塞报告时「没有阻塞」是正常结果，不是错误', as
   }
 })
 
+test('技能注册抛错不会把整个插件拖下水', () => {
+  const workspace = emptyWorkspace()
+  try {
+    const tools = []
+    const commands = []
+    const disposers = []
+    const register = (list) => (definition) => {
+      list.push(definition)
+      return () => {}
+    }
+
+    const ctx = {
+      commands: { register: register(commands) },
+      tools: { register: register(tools) },
+      workingDirectory: { ensure: async () => workspace.dir },
+      get: (name) =>
+        name === 'skills'
+          ? {
+              register() {
+                throw new Error('invalid skill name')
+              },
+              async list() {
+                return []
+              },
+            }
+          : undefined,
+      effect(callback, label) {
+        const dispose = callback()
+        disposers.push({ label, dispose })
+        return () => {}
+      },
+    }
+
+    assert.doesNotThrow(() => apply(ctx))
+    assert.equal(commands.length, 1, '技能挂了，命令还得在')
+    assert.equal(tools.length, 7)
+  } finally {
+    workspace.cleanup()
+  }
+})
+
 test('插件卸载后命令与工具都不再注册', () => {
   const { tools, commands, disposers } = install('D:\\plugin')
 
