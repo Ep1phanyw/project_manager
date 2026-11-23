@@ -14,6 +14,7 @@ import { createFsStore } from './lib/store.js'
 
 import { formatBlockReport } from './lib/format.js'
 import { FLOW, flowBrief, flowSkillRegistrations, readSkill } from './lib/skills.js'
+import { surveyWorkspace, workspaceContext } from './lib/workspace.js'
 
 export const name = 'dsh-manager'
 
@@ -87,6 +88,7 @@ export function apply(ctx) {
       commandName: COMMAND_NAME,
       runChild: childRunner(ctx, agent, workspace),
       hasOrigin: originChecker(workspace),
+      contextFiles: () => workspaceContext(workspace),
     })
   }
 
@@ -447,6 +449,9 @@ function registerFlowSkills(ctx) {
 
 /** 还没项目时：把「grill → to-spec → to-tickets」这条流程交出去。 */
 async function bootstrap(ctx, invocation) {
+  const workspace = await ctx.workingDirectory.ensure(invocation.agent)
+  const survey = surveyWorkspace(workspace)
+
   const brief = flowBrief()
   const nudged = await nudgeSession(ctx, invocation.agent, brief, invocation.signal)
   const shadowed = await shadowedSkills(ctx)
@@ -455,13 +460,25 @@ async function bootstrap(ctx, invocation) {
     ? '还没有项目。这条流程已经排进本会话，主对话接下来会按顺序开始访谈。'
     : `还没有项目。流程在下面；自动排进会话失败了（${nudged.reason}）—— 你回一句「开始」，我就照它做。`
 
+  // 半成品工作区：先理解现状，再谈还缺什么。
+  const brownfield = survey.hasWork
+    ? [
+        '',
+        `这个工作区**不是空的**（顶层有：${survey.top.join('、')}）。`,
+        '所以在动手之前先做一件事：**读懂它现在是什么**。',
+        '  - 读 README、GLOSSARY、docs/adr、入口文件与构建配置；',
+        '  - 产出一段「现状摘要」：已经做了什么、用了哪些约定、哪些地方不能动；',
+        '  - 这份摘要要成为后面访谈的基础 —— 问「还差什么」，而不是「你想做什么」。',
+      ].join('\n')
+    : ''
+
   const warning =
     shadowed.length === 0
       ? ''
       : `\n\n注意：本机 ~/.agents/skills/ 里已装同名技能（${shadowed.join('、')}），它们是「只给用户」的，模型调不到。` +
         `这几步请用工具 ${TOOL_FLOW_SKILL} 取正文（它本地优先、包里兜底），不要指望能直接调用同名技能。`
 
-  return { kind: 'success', text: `${header}${warning}\n\n${brief}` }
+  return { kind: 'success', text: `${header}${brownfield}${warning}\n\n${brief}` }
 }
 
 /** 有哪些技能被本机同名的「只给用户」条目盖住了。 */

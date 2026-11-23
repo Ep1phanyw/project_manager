@@ -276,6 +276,41 @@ test('部分报了阻塞时停下，不会反复重跑同一个部分', async ()
   assert.match(again.problem, /阻塞/)
 })
 
+test('子对话的任务描述里会点出既有约定文件', async () => {
+  let seen = null
+  const store = memoryStore()
+  const state = createProjectState({
+    store,
+    now: () => Date.parse(AT),
+    runChild: async (task) => {
+      seen = task
+      return { ok: true, report: GOOD_REPORT }
+    },
+    contextFiles: () => ['README.md', 'GLOSSARY.md'],
+  })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
+  state.approvePlan({ by: 'user' })
+
+  await state.dispatchNext()
+
+  assert.match(seen.prompt, /开工前先读这些文件/)
+  assert.match(seen.prompt, /README\.md/)
+  assert.match(seen.prompt, /GLOSSARY\.md/)
+})
+
+test('没有既有约定时不加那一段', async () => {
+  let seen = null
+  const { state } = approvedProject(async (task) => {
+    seen = task
+    return { ok: true, report: GOOD_REPORT }
+  })
+
+  await state.dispatchNext()
+
+  assert.doesNotMatch(seen.prompt, /开工前先读这些文件/)
+})
+
 test('状态文本里能看到每个部分最近一次的结果', async () => {
   const { state } = approvedProject(async () => ({ ok: true, report: GOOD_REPORT }))
   await state.dispatchNext()
