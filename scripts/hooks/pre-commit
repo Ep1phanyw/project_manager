@@ -1,0 +1,15 @@
+#!/bin/sh
+# 提交前先确认每个源码模块都能加载。
+#
+# 启用（在 sh 能跑的环境里，例如正常机器或 CI）：
+#     git config core.hooksPath scripts/hooks
+#
+# 注意：DSH 的 Windows 沙箱禁止创建命名管道，git 调 sh.exe 会直接失败，
+# 那种环境下不要启用这个钩子 —— 改成在改动之后自己跑 `node scripts/check.js`。
+
+node scripts/check.js || {
+  echo ""
+  echo "提交被拦下：先把上面的加载失败修好。"
+  echo "（跳过检查：git commit --no-verify）"
+  exit 1
+}
