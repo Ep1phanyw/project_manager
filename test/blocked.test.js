@@ -197,6 +197,8 @@ test('阻塞报告说清卡在哪、试过什么、需要你给什么', async ()
   assert.match(report.text, /P1/)
   assert.match(report.text, /连续两次/)
   assert.match(report.text, /证据里没有测试输出/)
+  assert.match(report.text, /试过/)
+  assert.match(report.text, /第 1 次/)
   assert.match(report.text, /需要你/)
 })
 
