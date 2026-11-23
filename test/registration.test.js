@@ -49,7 +49,11 @@ test('装好之后注册了 /manager 命令与两个工具', () => {
 
   assert.equal(commands.length, 1)
   assert.equal(commands[0].name, 'manager')
-  assert.deepEqual(tools.map((tool) => tool.name).sort(), ['manager_plan', 'manager_start'])
+  assert.deepEqual(tools.map((tool) => tool.name).sort(), [
+    'manager_plan',
+    'manager_run',
+    'manager_start',
+  ])
 })
 
 test('/manager status 与裸 /manager 走同一条路径', async () => {
@@ -123,8 +127,8 @@ test('插件卸载后命令与工具都不再注册', () => {
   const { tools, commands, disposers } = install('D:\\plugin')
 
   assert.equal(commands.length, 1)
-  assert.equal(tools.length, 2)
-  assert.equal(disposers.length, 3)
+  assert.equal(tools.length, 3)
+  assert.equal(disposers.length, 4)
 
   for (const { dispose } of disposers) dispose()
 

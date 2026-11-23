@@ -9,7 +9,12 @@ export function memoryStore() {
     listProjects: () => [...projects.keys()].sort(),
     read: (slug) => projects.get(slug) ?? null,
     write: (slug, documents) => {
-      const current = projects.get(slug) ?? { project: null, acceptance: null, plan: null }
+      const current = projects.get(slug) ?? {
+        project: null,
+        acceptance: null,
+        plan: null,
+        parts: null,
+      }
       projects.set(slug, { ...current, ...documents })
     },
   }

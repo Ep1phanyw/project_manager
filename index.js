@@ -14,12 +14,36 @@ import { createFsStore } from './lib/store.js'
 export const name = 'dsh-manager'
 
 /** 三个都是硬依赖：少一个就不该半装好地跑起来。 */
-export const inject = ['commands', 'tools', 'workingDirectory']
+export const inject = ['commands', 'tools', 'workingDirectory', 'subagents']
 
+const TOOL_START = 'manager_start'
+const TOOL_PLAN = 'manager_plan'
+const TOOL_RUN = 'manager_run'
 const COMMAND_NAME = 'manager'
 const STATUS_KEYWORD = 'status'
 const APPROVE_KEYWORD = 'approve'
 const REJECT_KEYWORD = 'reject'
+
+/** 子对话必须按这个形状回报，所以回报不靠解析自由文本。 */
+const REPORT_SCHEMA = {
+  type: 'object',
+  properties: {
+    status: {
+      type: 'string',
+      enum: ['done', 'needs-user-verification', 'blocked'],
+      description: '这一部分的结果',
+    },
+    summary: { type: 'string', description: '一两句话说明做了什么、结果如何' },
+    evidence: {
+      type: 'array',
+      items: { type: 'string' },
+      description: '可复现的证据：测试输出、构建结果、命令输出或产物路径',
+    },
+    blockedReason: { type: 'string', description: '仅当 status 为 blocked 时必填' },
+  },
+  required: ['status', 'summary', 'evidence'],
+  additionalProperties: false,
+}
 
 /** 两个工具的结果形状一致：一句给人看的话。 */
 const TEXT_OUTPUT = {
@@ -42,6 +66,7 @@ export function apply(ctx) {
     return createProjectState({
       store: createFsStore(join(workspace, '.scratch')),
       commandName: COMMAND_NAME,
+      runChild: childRunner(ctx, agent, workspace),
     })
   }
 
@@ -121,6 +146,33 @@ export function apply(ctx) {
     },
   })
 
+  registerTool(ctx, stateFor, {
+    name: TOOL_RUN,
+    description:
+      '跑下一个可派分的部分：起一个独立上下文的子对话去做它，把结构化回报记进项目。子对话失败或回报不合规时记为可重试，不会让项目崩掉。',
+    parameters: {
+      type: 'object',
+      properties: {
+        project: { type: 'string', description: '项目名；当前只有一个项目时可以省略' },
+      },
+      additionalProperties: false,
+    },
+    async run(args, state, exec) {
+      const result = await state.dispatchNext({ project: args?.project, signal: exec.signal })
+      if (!result.ok) {
+        return {
+          ok: false,
+          problem: result.retryable ? `${result.problem}（可重试）` : result.problem,
+        }
+      }
+
+      return {
+        ok: true,
+        text: `部分 ${result.part.id}「${result.part.title}」第 ${result.attempt} 次回报：${result.report.status}。${result.report.summary}`,
+      }
+    },
+  })
+
   ctx.effect(
     () =>
       ctx.commands.register({
@@ -174,11 +226,72 @@ function registerTool(ctx, stateFor, { name, description, parameters, run }) {
         output: TEXT_OUTPUT,
         async execute(args, exec) {
           const state = await stateFor(exec.agent)
-          const result = await run(args, state)
+          const result = await run(args, state, exec)
           if (!result.ok) throw new Error(result.problem)
           return { ok: true, text: result.text }
         },
       }),
     `dsh-manager: ${name} tool`,
   )
+}
+
+/**
+ * 起一个独立上下文的子对话去做一个部分。
+ *
+ * provider `spawn` 不继承父会话的上下文 —— 这正是「子对话只看得到这一部分」
+ * 的实现方式。结果靠 outputSchema 校验过的结构化对象拿回来，不解析自由文本。
+ */
+function childRunner(ctx, parent, workspace) {
+  return async ({ part, prompt, signal }) => {
+    if (!parent) return { ok: false, problem: '没有会话上下文，起不了子对话' }
+
+    const activation = await ctx.subagents.startActivation({
+      provider: 'spawn',
+      label: `dsh-manager ${part.id}`,
+      prompt: [{ type: 'text', text: prompt }],
+      parent,
+      cwd: workspace,
+      signal: signal ?? new AbortController().signal,
+      delivery: 'parent',
+      outputSchema: REPORT_SCHEMA,
+    })
+
+    try {
+      const result = await activation.result
+      const report = readReport(result)
+      if (!report) {
+        const reason = result?.stopReason ?? '未知'
+        return { ok: false, problem: `子对话没有按约定回报（stopReason: ${reason}）` }
+      }
+      return { ok: true, report, sessionId: String(activation.childId ?? '') }
+    } catch (error) {
+      return { ok: false, problem: error instanceof Error ? error.message : String(error) }
+    } finally {
+      try {
+        await activation.dispose?.()
+      } catch {
+        // 已经结束的激活无需再清理
+      }
+    }
+  }
+}
+
+function readReport(result) {
+  if (result?.structured && typeof result.structured === 'object') return result.structured
+
+  const text = Array.isArray(result?.output)
+    ? result.output
+        .filter((block) => block?.type === 'text')
+        .map((block) => block.text)
+        .join('\n')
+    : ''
+
+  const blocks = [...text.matchAll(/```json\s*([\s\S]*?)```/g)]
+  if (blocks.length === 0) return null
+
+  try {
+    return JSON.parse(blocks[blocks.length - 1][1])
+  } catch {
+    return null
+  }
 }
