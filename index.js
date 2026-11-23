@@ -16,6 +16,7 @@ import { createFsStore } from './lib/store.js'
 import { formatBlockReport } from './lib/format.js'
 import { readEvidenceTypes, readSnapshotMode } from './lib/config.js'
 import { FLOW, flowBrief, flowSkillRegistrations, readSkill } from './lib/skills.js'
+import { strayChanges } from './lib/git.js'
 import { surveyWorkspace, workspaceContext } from './lib/workspace.js'
 
 export const name = 'dsh-manager'
@@ -106,6 +107,7 @@ export function apply(ctx, config) {
       contextFiles: () => workspaceContext(workspace),
       snapshot: snapshotMode === 'off' ? null : snapshotter(workspace, snapshotMode),
       evidenceTypes,
+      strayCheck: (part) => strayChanges(workspace, part.files),
     })
   }
 
@@ -205,9 +207,14 @@ export function apply(ctx, config) {
         }
       }
 
+      const stray =
+        result.stray?.length > 0
+          ? `\n\n注意：这个部分改到了声明之外的文件 —— ${result.stray.join('、')}。验收时先看这些改动。`
+          : ''
+
       return {
         ok: true,
-        text: `部分 ${result.part.id}「${result.part.title}」第 ${result.attempt} 次回报：${result.report.status}。${result.report.summary}`,
+        text: `部分 ${result.part.id}「${result.part.title}」第 ${result.attempt} 次回报：${result.report.status}。${result.report.summary}${stray}`,
       }
     },
   })
