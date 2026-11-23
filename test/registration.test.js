@@ -181,6 +181,23 @@ test('多个项目时用 @项目名 指定，驳回不会因为「有多个项�
   }
 })
 
+test('查询阻塞报告时「没有阻塞」是正常结果，不是错误', async () => {
+  const workspace = emptyWorkspace()
+  try {
+    const { tools } = install(workspace.dir)
+    const start = tools.find((tool) => tool.name === 'manager_start')
+    const block = tools.find((tool) => tool.name === 'manager_block')
+
+    await start.execute({ name: 'demo', goal: '做点事', acceptance: ['一条'] }, { agent: {} })
+
+    const result = await block.execute({ project: 'demo' }, { agent: {} })
+
+    assert.match(result?.content?.[0]?.text ?? JSON.stringify(result), /没有部分处于阻塞/)
+  } finally {
+    workspace.cleanup()
+  }
+})
+
 test('插件卸载后命令与工具都不再注册', () => {
   const { tools, commands, disposers } = install('D:\\plugin')
 

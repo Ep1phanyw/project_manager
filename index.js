@@ -256,7 +256,13 @@ export function apply(ctx) {
     async run(args, state) {
       if (!args?.condition) {
         const report = state.blockReport({ project: args?.project })
-        if (!report.ok) return report
+        if (!report.ok) {
+          // 「没有阻塞」是个正常的查询结果，不该当成错误抛给模型。
+          if (report.problem === '现在没有部分处于阻塞') {
+            return { ok: true, text: '当前没有部分处于阻塞。' }
+          }
+          return report
+        }
         return { ok: true, text: formatBlockReport(report.blocked) }
       }
 
