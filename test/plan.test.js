@@ -32,7 +32,7 @@ test('合法计划落盘，并在 status 里看得到每个部分', () => {
   assert.deepEqual(project.parts[0], {
     id: 'P1',
     title: '做登录页',
-    ticket: '',
+    origin: '',
     dependsOn: [],
     files: ['src/login.js'],
     evidence: 'test',
@@ -56,7 +56,7 @@ test('计划写入文件后，换一个全新实例仍能读回 —— 依赖与
       {
         id: 'P1',
         title: '做登录页',
-        ticket: '',
+        origin: '',
         dependsOn: [],
         files: ['src/login.js'],
         evidence: 'test',
@@ -64,7 +64,7 @@ test('计划写入文件后，换一个全新实例仍能读回 —— 依赖与
       {
         id: 'P2',
         title: '接后端',
-        ticket: '',
+        origin: '',
         dependsOn: ['P1'],
         files: ['src/api.js'],
         evidence: 'build',
@@ -220,19 +220,19 @@ test('计划被拒时不落盘，原有状态不动', () => {
   assert.deepEqual(store.read('demo'), before)
 })
 
-test('部分可以声明自己来自哪张票，票文件不存在时被拒', () => {
+test('部分可以声明自己的来源，来源文件不存在时被拒', () => {
   const store = memoryStore()
-  const state = createProjectState({ store, hasTicket: (id) => id === '03' })
+  const state = createProjectState({ store, hasOrigin: (id) => id === '03' })
   state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
 
   const ok = state.submitPlan({
-    parts: [{ title: '甲', ticket: '03', files: ['a.js'], evidence: 'test' }],
+    parts: [{ title: '甲', origin: '03', files: ['a.js'], evidence: 'test' }],
   })
   assert.equal(ok.ok, true)
-  assert.equal(state.status().project.parts[0].ticket, '03')
+  assert.equal(state.status().project.parts[0].origin, '03')
 
   const bad = state.submitPlan({
-    parts: [{ title: '乙', ticket: '99', files: ['b.js'], evidence: 'test' }],
+    parts: [{ title: '乙', origin: '99', files: ['b.js'], evidence: 'test' }],
   })
   assert.equal(bad.ok, false)
   assert.match(bad.problem, /99/)

@@ -75,7 +75,7 @@ test('流程指令是短的：只点别名，不把正文塞进来', () => {
     assert.match(brief, /dsh-manager-spec/)
     assert.match(brief, /dsh-manager-tickets/)
     assert.match(brief, /manager_plan/)
-    assert.match(brief, /票：/)
+    assert.match(brief, /来源：/)
     assert.ok(brief.split('\n').length < 15, '指令应该短')
     assert.doesNotMatch(brief, /正文 grill-with-docs/, '正文不该出现在指令里')
   } finally {

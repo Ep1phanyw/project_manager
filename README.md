@@ -49,6 +49,22 @@
 
 **缺了会怎样**：缺哪个就少哪个别名，`/manager` 会在流程后面点名缺什么；**三个都缺**时它会明说，并给出退路 —— 直接讲目标和验收标准，用 `manager_start` 起项目。核心回路（start → plan → run → verify）不依赖这些技能。
 
+### 来源与署名
+
+上面三个别名的正文来自 **Matt Pocock 的 [skills](https://github.com/mattpocock/skills)**：
+
+| 别名 | 原技能 |
+| --- | --- |
+| `dsh-manager-grill` | `grill-with-docs` |
+| `dsh-manager-spec` | `to-spec` |
+| `dsh-manager-tickets` | `to-tickets` |
+
+那个仓库是 **MIT 许可**（`Copyright (c) 2026 Matt Pocock`），作者在 README 里明确邀请改编：*"These skills are designed to be small, easy to adapt, and composable… Hack around with them. Make them your own."*
+
+**本插件不打包他的任何正文**：包内容只有 `index.js`、`lib/`、`cordis.patch.yml`。正文在加载时从本机 `~/.agents/skills/` 读取，再注册成别名 —— 所以 MIT 里「复制或分发实质部分需附版权声明」这一条在这里不触发。
+
+如果你将来把正文**内联进插件**，请连同上面那句版权声明一起带上。
+
 三个最常用的：
 
 | 命令 | 作用 |
