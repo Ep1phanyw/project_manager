@@ -88,7 +88,7 @@ test('验收不通过要写理由，部分回到可重派', async () => {
   })
 
   assert.equal(result.ok, true)
-  assert.equal(state.status().project.partStatus.P1, 'rejected')
+  assert.equal(state.status().project.partStatus.P1, 'returned')
 
   const next = state.nextPart()
   assert.equal(next.ok, true)
@@ -117,7 +117,7 @@ test('不通过后重派，轮次递增，失败理由留在历史里', async ()
 
   const { project } = state.status()
   assert.equal(project.records.length, 3)
-  assert.equal(project.records[1].status, 'rejected')
+  assert.equal(project.records[1].status, 'returned')
   assert.match(project.records[1].summary, /缺测试输出/)
 })
 
@@ -130,7 +130,7 @@ test('连续两次同样的失败理由可以被数出来 —— 供判断原因
 
   const { project } = state.status()
   const reasons = project.records
-    .filter((record) => record.partId === 'P1' && record.status === 'rejected')
+    .filter((record) => record.partId === 'P1' && record.status === 'returned')
     .map((record) => record.summary)
 
   assert.equal(reasons.length, 2)

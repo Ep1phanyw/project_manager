@@ -10,6 +10,19 @@ Issues and specs for this repo live as markdown files in `.scratch/`.
 - Triage state is recorded as a `Status:` line near the top of each issue file (see `triage-labels.md` for the role strings)
 - Comments and conversation history append to the bottom of the file under a `## Comments` heading
 
+## Status values for implementation tickets
+
+`Status:` on a ticket produced by `/to-tickets` records where the work stands:
+
+- `ready-for-agent` — nobody has started it
+- `in-progress` — being worked
+- `in-review` — the work is done and awaits the user's own look
+- `done` — accepted
+
+The five triage labels in `triage-labels.md` are a different vocabulary: they describe an incoming issue's readiness, not an implementation ticket's progress. Don't mix them.
+
+Verification evidence for a finished ticket goes under a `## 验证记录` heading — it is a record of what was checked, not a conversation. Back-and-forth still belongs under `## Comments`.
+
 ## When a skill says "publish to the issue tracker"
 
 Create a new file under `.scratch/<feature-slug>/` (creating the directory if needed).
