@@ -231,6 +231,21 @@ test('驳回理由带换行时被拒 —— 否则审批记录会被写坏', () 
   assert.equal(state.status().project.phase, 'awaiting-approval')
 })
 
+test('计划里有部分带来源时，批准不会炸', () => {
+  const store = memoryStore()
+  const state = createProjectState({ store, now: () => Date.parse(AT), hasOrigin: () => true })
+
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  state.submitPlan({
+    parts: [{ title: '甲', origin: '03', files: ['a.js'], evidence: 'test' }],
+  })
+
+  const result = state.approvePlan({ by: 'user' })
+
+  assert.equal(result.ok, true)
+  assert.equal(state.status().project.phase, 'executing')
+})
+
 test('有依赖的部分先不派，先挑没有依赖的那个', () => {
   const store = memoryStore()
   const state = createProjectState({ store, now: () => Date.parse(AT) })
