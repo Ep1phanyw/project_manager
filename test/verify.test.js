@@ -147,6 +147,60 @@ test('验收结论只接受 pass 或 fail', async () => {
   assert.match(result.problem, /pass|fail/)
 })
 
+test('手写一条「验收通过」绕不过验收', () => {
+  const { store, state } = scenario()
+  store.write('demo', {
+    parts:
+      '# 部分记录\n\n## [P1] 第 1 次 · 2026-11-23T06:00:00.000Z\n\n- 状态：accepted\n\n### 理由\n\n  OK\n',
+  })
+
+  const { project } = state.status()
+  assert.equal(project.partStatus.P1, 'unverified-acceptance')
+
+  const next = state.nextPart()
+  assert.equal(next.ok, true)
+  assert.equal(next.part.id, 'P1')
+})
+
+test('验收通过的记录保留它所验收的证据，事后能复核', async () => {
+  const { state } = scenario()
+  await state.dispatchNext()
+
+  state.verifyPart({ part: 'P1', verdict: 'pass', reason: 'AC-1 对上' })
+
+  const accepted = state.status().project.records.find((record) => record.status === 'accepted')
+  assert.deepEqual(accepted.evidence, ['test：node --test 全绿（12 条）'])
+})
+
+test('未批准时不能验收', async () => {
+  const { state } = scenario()
+  await state.dispatchNext()
+  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
+
+  const result = state.verifyPart({ part: 'P1', verdict: 'pass', reason: '看过了' })
+
+  assert.equal(result.ok, false)
+  assert.match(result.problem, /批准/)
+})
+
+test('改了计划之后旧的验收不再作数', async () => {
+  const { state } = scenario()
+  await state.dispatchNext()
+  state.verifyPart({ part: 'P1', verdict: 'pass', reason: 'AC-1 对上' })
+  assert.equal(state.nextPart().part.id, 'P2')
+
+  const revised = state.submitPlan({
+    parts: [
+      { title: '重做登录页', files: ['src/login.js'], evidence: 'test' },
+      { title: '接后端', dependsOn: ['P1'], files: ['src/api.js'], evidence: 'test' },
+    ],
+  })
+
+  assert.equal(revised.ok, true)
+  assert.equal(state.status().project.records.length, 0)
+  assert.match(state.nextPart().problem, /批准/)
+})
+
 test('计划里没有这个部分时验收被拒', async () => {
   const { state } = scenario()
 
