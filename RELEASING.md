@@ -14,6 +14,19 @@
 
 改完之后 `bundle` 的 id 与包名要保持一致 —— 这条是 `cordis.patch.yml` 开头的约定。
 
+## 0.5 怎么被人搜到
+
+包名里没有 `dsh`，所以**必须靠标记补**。三处都要做：
+
+| 位置 | 写什么 | 为什么 |
+| --- | --- | --- |
+| **GitHub 仓库 Topics** | **`dsh-plugin`（必须）**、`deepseek-harness`、`dsh`、`cordis`、`ai-agent` | `dsh-plugin` 是 DeepSeek 官方识别 DSH 插件的 topic，**没打就等于不存在** |
+| `package.json` → `keywords` | `dsh`、`deepseek-harness`、`dsh-plugin`、`cordis`、`project`、`orchestration`、`subagents`、`acceptance` | npm 站内搜索 |
+| README 首段 | 明确写出「DeepSeek Harness（DSH）插件」 | 人和搜索都会读第一段 |
+
+另有一个比 npm 搜索更重要的渠道：DSH 内置的 **dshmarket** 插件市场（支持一键装）。
+它有自己的收录方式，**发布后要去查怎么被它收录**，否则别人在市场里搜不到你。
+
 ## 1. 本地必须全绿
 
 ```
