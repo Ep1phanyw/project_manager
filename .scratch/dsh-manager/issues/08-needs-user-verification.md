@@ -4,7 +4,7 @@
 
 **Blocked by:** 06
 
-**Status:** in-review
+**Status:** done
 
 - [x] 子对话回报「待确认」时项目停下，不再派分下一部分
 - [x] 停下时把该部分产出的材料呈现给用户
