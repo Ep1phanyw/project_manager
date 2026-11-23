@@ -57,9 +57,14 @@ _Avoid_: proof, 证明, 结果, 自述
 _Avoid_: 已完成, 完工, finished
 
 **Verification**（验收）:
-主对话拿证据对照验收标准，判定一个部分的候选完成算不算数。结论只有两种：验收通过（`accepted`）、验收不通过（`returned`，打回重做）。注意它和 **Approval** 不是一回事：Approval 是用户对计划点头或驳回。
+主对话拿证据对照验收标准，判定一个部分的候选完成算不算数。结论两种：验收通过（`accepted`）、验收不通过（`returned`，打回重做）。注意它和 **Approval** 不是一回事：Approval 是用户对计划点头或驳回。
 
 _Avoid_: 审核, 复核, rejected
+
+**User confirmation**（用户确认）:
+有些证据只能由用户亲眼判断（`needs-user-verification`）。用户点头记 `confirmed`，打回记 `declined` —— 这是第三种用户裁决，既不等于 **Approval**（对计划），也不等于 **Verification**（由主对话做）。
+
+_Avoid_: 人工验收, 手工验收, sign-off
 
 **Blocked**（阻塞）:
 主对话必须停下并出报告的状态，只在三种情形成立：同一部分连续两次验收失败且失败原因未变；缺少只有用户能提供的东西；需要改动验收标准本身。主对话不得在任何其他情形下宣布阻塞，也不得自行降低验收标准。

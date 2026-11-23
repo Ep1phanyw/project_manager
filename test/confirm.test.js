@@ -117,7 +117,7 @@ test('用户拒绝时这一部分回到可重派，并记下理由', async () =>
   assert.equal(declined.ok, true)
 
   const { project } = state.status()
-  assert.equal(project.partStatus.P1, 'returned')
+  assert.equal(project.partStatus.P1, 'declined')
   assert.match(project.records.at(-1).summary, /设计稿/)
 
   const next = state.nextPart()
@@ -154,15 +154,22 @@ test('已经确认过的部分不能再确认', async () => {
   assert.equal(again.ok, false)
 })
 
-test('停下的原因也能直接查出来，供命令层展示', async () => {
+test('有部分在等确认时不能改计划 —— 改计划不能跳过用户', async () => {
   const { state } = scenario()
   await state.dispatchNext()
 
-  const pending = state.pendingConfirmations()
+  const result = state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
 
-  assert.equal(pending.ok, true)
-  assert.equal(pending.parts.length, 1)
-  assert.equal(pending.parts[0].id, 'P1')
-  assert.match(pending.parts[0].summary, /风格/)
-  assert.equal(pending.parts[0].evidence.length, 2)
+  assert.equal(result.ok, false)
+  assert.match(result.problem, /等你确认/)
+})
+
+test('停下的原因也能在状态文本里看到', async () => {
+  const { state } = scenario()
+  await state.dispatchNext()
+
+  const text = formatStatus(state.status().project)
+
+  assert.match(text, /待你确认/)
+  assert.match(text, /风格/)
 })
