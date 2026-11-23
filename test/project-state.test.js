@@ -15,8 +15,9 @@ function memoryStore() {
   return {
     listProjects: () => [...projects.keys()].sort(),
     read: (slug) => projects.get(slug) ?? null,
-    write: (slug, files) => {
-      projects.set(slug, files)
+    write: (slug, documents) => {
+      const current = projects.get(slug) ?? { project: null, acceptance: null, plan: null }
+      projects.set(slug, { ...current, ...documents })
     },
   }
 }

@@ -16,9 +16,12 @@ export const name = 'dsh-manager'
 /** 三个都是硬依赖：少一个就不该半装好地跑起来。 */
 export const inject = ['commands', 'tools', 'workingDirectory']
 
-const TOOL_NAME = 'manager_start'
+const TOOL_START = 'manager_start'
+const TOOL_PLAN = 'manager_plan'
 const COMMAND_NAME = 'manager'
 const STATUS_KEYWORD = 'status'
+
+const EVIDENCE_TYPES = ['test', 'build', 'command', 'artifact']
 
 export function apply(ctx) {
   /** 每次调用都按它所在会话的工作区解析状态目录，状态天然跟随会话。 */
@@ -30,7 +33,7 @@ export function apply(ctx) {
   ctx.effect(
     () =>
       ctx.tools.register({
-        name: TOOL_NAME,
+        name: TOOL_START,
         description:
           '启动一个项目：写下它的目标与逐条验收标准。状态落在会话工作区的 .scratch/ 下。项目名同时用作目录名，重名会被拒绝。',
         parameters: {
@@ -77,9 +80,73 @@ export function apply(ctx) {
 
   ctx.effect(
     () =>
+      ctx.tools.register({
+        name: TOOL_PLAN,
+        description:
+          '提交项目计划：每个部分声明它依赖哪些部分、会改哪些文件、用什么证据证明自己做完了。依赖成环、或者两个部分改同一批文件却没有先后关系，都会被拒绝。',
+        parameters: {
+          type: 'object',
+          properties: {
+            project: { type: 'string', description: '项目名；当前只有一个项目时可以省略' },
+            parts: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string', description: '部分编号，形如 P1；省略则按顺序生成' },
+                  title: { type: 'string', description: '这部分要做什么' },
+                  dependsOn: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: '必须先完成的部分编号',
+                  },
+                  files: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: '这部分会改动的文件或目录',
+                  },
+                  evidence: {
+                    type: 'string',
+                    enum: EVIDENCE_TYPES,
+                    description: '这部分靠什么证据证明完成',
+                  },
+                },
+                required: ['title', 'files', 'evidence'],
+                additionalProperties: false,
+              },
+            },
+          },
+          required: ['parts'],
+          additionalProperties: false,
+        },
+        output: {
+          schema: {
+            type: 'object',
+            properties: {
+              ok: { type: 'boolean' },
+              text: { type: 'string' },
+            },
+            required: ['ok', 'text'],
+            additionalProperties: false,
+          },
+          render: (_args, value) => [{ type: 'text', text: String(value?.text ?? '') }],
+        },
+        async execute(args, exec) {
+          const state = await stateFor(exec.agent)
+          const result = state.submitPlan(args)
+          if (!result.ok) throw new Error(result.problem)
+
+          return { ok: true, text: `计划已记录，共 ${result.count} 个部分。` }
+        },
+      }),
+    'dsh-manager: manager_plan tool',
+  )
+
+  ctx.effect(
+    () =>
       ctx.commands.register({
         name: COMMAND_NAME,
-        description: '查看项目状态与验收标准：/manager 或 /manager status；多个项目时用 /manager <项目名>',
+        description: '查看项目状态、验收标准与计划：/manager 或 /manager status；多个项目时用 /manager <项目名>',
         input: { hint: '[status | 项目名]' },
         async handler(invocation) {
           const state = await stateFor(invocation.agent)
