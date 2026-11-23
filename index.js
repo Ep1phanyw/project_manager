@@ -29,6 +29,7 @@ const APPROVE_KEYWORD = 'approve'
 const REJECT_KEYWORD = 'reject'
 const CONFIRM_KEYWORD = 'confirm'
 const DECLINE_KEYWORD = 'decline'
+const RESOLVE_KEYWORD = 'resolve'
 
 /** 子对话必须按这个形状回报，所以回报不靠解析自由文本。 */
 const REPORT_SCHEMA = {
@@ -263,8 +264,8 @@ export function apply(ctx) {
       ctx.commands.register({
         name: COMMAND_NAME,
         description:
-          '项目状态、计划与审批：/manager（或 status）看状态，/manager approve 批准计划，/manager reject [理由] 驳回，/manager confirm [说明] 确认等你点头的部分，/manager decline [理由] 打回，/manager <项目名> 指定项目',
-        input: { hint: '[status | approve | reject [理由] | confirm [说明] | decline [理由] | 项目名]' },
+          '项目状态、计划与审批：/manager（或 status）看状态，/manager approve 批准计划，/manager reject [理由] 驳回，/manager confirm [说明] 确认等你点头的部分，/manager decline [理由] 打回，/manager resolve [说明] 解除阻塞，/manager <项目名> 指定项目',
+        input: { hint: '[status | approve | reject [理由] | confirm [说明] | decline [理由] | resolve [说明] | 项目名]' },
         async handler(invocation) {
           const state = await stateFor(invocation.agent)
           const raw = invocation.rawInput.trim()
@@ -295,6 +296,12 @@ export function apply(ctx) {
             const result = state.declinePart({ by: 'user', reason: rest.join(' ') })
             if (!result.ok) return { kind: 'error', text: result.problem }
             return { kind: 'success', text: `部分 ${result.part.id} 已打回，会重新派分。` }
+          }
+
+          if (keyword === RESOLVE_KEYWORD) {
+            const result = state.resolvePart({ by: 'user', reason: rest.join(' ') })
+            if (!result.ok) return { kind: 'error', text: result.problem }
+            return { kind: 'success', text: `部分 ${result.part.id} 的阻塞已解除，可以重新派分。` }
           }
 
           // 项目名可能带空格，所以这里用整行而不是第一个词。
