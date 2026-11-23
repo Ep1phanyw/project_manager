@@ -285,7 +285,7 @@ test('自己依赖自己被判成环', () => {
   assert.match(result.problem, /环/)
 })
 
-test('计划文件被手工改成认不出的内容时报错，而不是静默给出残缺计划', () => {
+test('计划文件被手工改坏时只降级计划，目标与验收标准仍然看得见', () => {
   const store = memoryStore()
   const state = createProjectState({ store })
   state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
@@ -295,6 +295,40 @@ test('计划文件被手工改成认不出的内容时报错，而不是静默�
 
   const result = state.status()
 
+  assert.equal(result.ok, true)
+  assert.equal(result.project.goal, '做点事')
+  assert.deepEqual(result.project.acceptance, ['一条'])
+  assert.deepEqual(result.project.parts, [])
+  assert.match(result.project.planProblem, /认不出来/)
+
+  const text = formatStatus(result.project)
+  assert.match(text, /做点事/)
+  assert.match(text, /计划读不出来/)
+})
+
+test('目录与它下面的文件算同一片地方，没有先后关系就拒', () => {
+  const { state } = withProject()
+
+  const result = state.submitPlan({
+    parts: [
+      { title: '甲', files: ['src/auth/'], evidence: 'test' },
+      { title: '乙', files: ['src/auth/login.js'], evidence: 'test' },
+    ],
+  })
+
   assert.equal(result.ok, false)
-  assert.match(result.problem, /认不出来/)
+  assert.match(result.problem, /先后/)
+})
+
+test('目录重叠加了依赖就放行', () => {
+  const { state } = withProject()
+
+  const result = state.submitPlan({
+    parts: [
+      { title: '甲', files: ['src/auth'], evidence: 'test' },
+      { title: '乙', dependsOn: ['P1'], files: ['src/auth/login.js'], evidence: 'test' },
+    ],
+  })
+
+  assert.equal(result.ok, true)
 })
