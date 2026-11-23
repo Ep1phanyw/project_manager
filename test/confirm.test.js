@@ -76,7 +76,7 @@ test('用户确认后这一部分算完成，循环继续', async () => {
   const { state } = scenario([NEEDS_LOOK, DONE_REPORT])
   await state.dispatchNext()
 
-  const confirmed = state.confirmPart({ by: 'user', part: 'P1', reason: '看过了，风格没问题' })
+  const confirmed = state.confirmPart({ by: 'user', part: 'P1' })
   assert.equal(confirmed.ok, true)
 
   const { project } = state.status()
@@ -88,14 +88,14 @@ test('用户确认后这一部分算完成，循环继续', async () => {
   assert.equal(next.part.id, 'P2')
 })
 
-test('用户确认也要写理由', async () => {
+test('用户确认可以不写说明，会记一句默认的', async () => {
   const { state } = scenario()
   await state.dispatchNext()
 
-  const result = state.confirmPart({ by: 'user', part: 'P1', reason: '' })
+  const result = state.confirmPart({ by: 'user', part: 'P1' })
 
-  assert.equal(result.ok, false)
-  assert.match(result.problem, /理由/)
+  assert.equal(result.ok, true)
+  assert.match(state.status().project.records.at(-1).summary, /用户确认/)
 })
 
 test('模型侧不能替用户确认', async () => {
