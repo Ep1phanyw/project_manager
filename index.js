@@ -6,6 +6,7 @@
  */
 
 import { existsSync, readdirSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
 import { join } from 'node:path'
 
 import { formatStatus } from './lib/format.js'
@@ -26,12 +27,14 @@ const TOOL_PLAN = 'manager_plan'
 const TOOL_RUN = 'manager_run'
 const TOOL_VERIFY = 'manager_verify'
 const TOOL_BLOCK = 'manager_block'
+const TOOL_ACCEPT = 'manager_accept'
 const TOOL_FLOW_SKILL = 'manager_flow_skill'
 const COMMAND_NAME = 'manager'
 const STATUS_KEYWORD = 'status'
 const APPROVE_KEYWORD = 'approve'
 const REJECT_KEYWORD = 'reject'
 const CONFIRM_KEYWORD = 'confirm'
+const ACCEPT_KEYWORD = 'accept'
 const DECLINE_KEYWORD = 'decline'
 const RESOLVE_KEYWORD = 'resolve'
 
@@ -89,6 +92,7 @@ export function apply(ctx) {
       runChild: childRunner(ctx, agent, workspace),
       hasOrigin: originChecker(workspace),
       contextFiles: () => workspaceContext(workspace),
+      snapshot: snapshotter(workspace),
     })
   }
 
@@ -225,12 +229,20 @@ export function apply(ctx) {
         return { ok: true, text: `连续两次因同一原因失败，判定阻塞。\n\n${text}` }
       }
 
+      const frozen = result.snapshot
+      const note =
+        frozen === undefined
+          ? ''
+          : frozen.ok
+            ? '已打 git 快照。'
+            : `快照没打上（${frozen.problem}），不影响验收。`
+
       return {
         ok: true,
         text:
-          result.verdict === 'pass'
+          (result.verdict === 'pass'
             ? `部分 ${result.part.id} 验收通过。`
-            : `部分 ${result.part.id} 验收不通过，已回到可派分。`,
+            : `部分 ${result.part.id} 验收不通过，已回到可派分。`) + note,
       }
     },
   })
@@ -270,6 +282,34 @@ export function apply(ctx) {
       if (!result.ok) return result
 
       return { ok: true, text: `部分 ${result.part.id} 已记为阻塞；把需要用户做的事摊清楚再停。` }
+    },
+  })
+
+  registerTool(ctx, stateFor, {
+    name: TOOL_ACCEPT,
+    description:
+      '收尾验收：所有部分都验收通过后，真的跑一遍项目的验收标准，然后把结果记下来等用户确认。没有跑过不要调用 —— 这是全项目唯一一次整体验证。',
+    parameters: {
+      type: 'object',
+      properties: {
+        summary: { type: 'string', description: '逐条验收标准的结论，一句话' },
+        evidence: {
+          type: 'array',
+          items: { type: 'string' },
+          description: '真的跑验收标准之后的输出：命令、产物、观察到的结果',
+        },
+        project: { type: 'string', description: '项目名；当前只有一个项目时可以省略' },
+      },
+      required: ['summary', 'evidence'],
+      additionalProperties: false,
+    },
+    async run(args, state) {
+      const result = state.acceptRun(args)
+      if (!result.ok) return result
+      return {
+        ok: true,
+        text: `收尾验收已记录（第 ${result.attempt} 轮）。现在停下来等用户 /${COMMAND_NAME} accept 确认。`,
+      }
     },
   })
 
@@ -333,10 +373,27 @@ export function apply(ctx) {
             return { kind: 'success', text: `部分 ${result.part.id} 已确认，循环可以继续了。` }
           }
 
-          if (keyword === DECLINE_KEYWORD) {
-            const result = state.declinePart({ by: 'user', project: targeted, reason: args })
+          if (keyword === ACCEPT_KEYWORD) {
+            const result = state.acceptProject({ by: 'user', project: targeted, reason: args })
             if (!result.ok) return { kind: 'error', text: result.problem }
-            return { kind: 'success', text: `部分 ${result.part.id} 已打回，会重新派分。` }
+            return { kind: 'success', text: '收尾验收已确认 —— 项目完成。' }
+          }
+
+          if (keyword === DECLINE_KEYWORD) {
+            // 部分与收尾验收不会同时待确认，所以一个词够用。
+            const part = state.declinePart({ by: 'user', project: targeted, reason: args })
+            if (part.ok) return { kind: 'success', text: `部分 ${part.part.id} 已打回，会重新派分。` }
+
+            const acceptance = state.declineAcceptance({
+              by: 'user',
+              project: targeted,
+              reason: args,
+            })
+            if (acceptance.ok) {
+              return { kind: 'success', text: '收尾验收已打回，改完再跑一遍验收标准。' }
+            }
+
+            return { kind: 'error', text: part.problem }
           }
 
           if (keyword === RESOLVE_KEYWORD) {
@@ -423,6 +480,33 @@ function childRunner(ctx, parent, workspace) {
       } catch {
         // 已经结束的激活无需再清理
       }
+    }
+  }
+}
+
+/**
+ * 验收通过后给工作区打一个 git 快照，留一个能回去的点。
+ *
+ * 只做 add + commit，不认识分支；工作区不是仓库、没有改动、或者钩子报错，
+ * 都只是没有快照，不影响验收本身。用 stdio:'ignore' 是因为这个沙箱不允许
+ * 抓子进程的 stdout。
+ */
+function snapshotter(workspace) {
+  return ({ part } = {}) => {
+    if (!existsSync(join(workspace, '.git'))) {
+      return { ok: false, problem: '工作区不是 git 仓库，没有打快照' }
+    }
+
+    const message = `dsh-manager: ${part?.id ?? '?'} 完成 — ${part?.title ?? ''}`.trim()
+
+    try {
+      execFileSync('git', ['-C', workspace, 'add', '-A'], { stdio: 'ignore' })
+      execFileSync('git', ['-C', workspace, 'commit', '--quiet', '-m', message], {
+        stdio: 'ignore',
+      })
+      return { ok: true, message }
+    } catch {
+      return { ok: false, problem: 'git 提交没成功（可能没有改动，或钩子报错）' }
     }
   }
 }

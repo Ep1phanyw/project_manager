@@ -44,12 +44,13 @@ function emptyWorkspace() {
   return { dir, cleanup: () => rmSync(dir, { recursive: true, force: true }) }
 }
 
-test('装好之后注册了 /manager 命令与六个工具', () => {
+test('装好之后注册了 /manager 命令与七个工具', () => {
   const { tools, commands } = install('D:\\plugin')
 
   assert.equal(commands.length, 1)
   assert.equal(commands[0].name, 'manager')
   assert.deepEqual(tools.map((tool) => tool.name).sort(), [
+    'manager_accept',
     'manager_block',
     'manager_flow_skill',
     'manager_plan',
@@ -202,8 +203,8 @@ test('插件卸载后命令与工具都不再注册', () => {
   const { tools, commands, disposers } = install('D:\\plugin')
 
   assert.equal(commands.length, 1)
-  assert.equal(tools.length, 6)
-  assert.equal(disposers.length, 7)
+  assert.equal(tools.length, 7)
+  assert.equal(disposers.length, 8)
 
   for (const { dispose } of disposers) dispose()
 

@@ -41,17 +41,76 @@ async function finishAll(state) {
   state.verifyPart({ part: 'P2', verdict: 'pass', reason: 'AC-1 端到端对上' })
 }
 
-test('所有部分验收通过后显示完成，且不再派分', async () => {
+test('所有部分验收通过后进入收尾验收，而不是直接算完成', async () => {
   const { state } = scenario()
   await finishAll(state)
 
   const { project } = state.status()
-  assert.equal(project.allDone, true)
-  assert.match(formatStatus(project), /阶段：完成/)
+  assert.equal(project.allPartsVerified, true)
+  assert.equal(project.allDone, false, '部分做完 ≠ 项目完成')
+  assert.match(formatStatus(project), /待收尾验收/)
 
   const next = state.nextPart()
   assert.equal(next.ok, false)
-  assert.match(next.problem, /完成/)
+  assert.match(next.problem, /收尾验收|manager_accept/)
+})
+
+test('跑完项目验收标准并经用户确认后，才算完成', async () => {
+  const { state } = scenario()
+  await finishAll(state)
+
+  const run = state.acceptRun({
+    summary: 'AC-1 到 AC-2 逐条跑过',
+    evidence: ['test：跑了一遍端到端，全绿'],
+  })
+  assert.equal(run.ok, true, run.problem)
+
+  const confirmed = state.acceptProject({ by: 'user' })
+  assert.equal(confirmed.ok, true, confirmed.problem)
+
+  const { project } = state.status()
+  assert.equal(project.allDone, true)
+  assert.match(formatStatus(project), /阶段：完成/)
+})
+
+test('收尾验收不能被模型自己确认', async () => {
+  const { state } = scenario()
+  await finishAll(state)
+  state.acceptRun({ summary: '跑过了', evidence: ['test：全绿'] })
+
+  const result = state.acceptProject({ by: 'model' })
+
+  assert.equal(result.ok, false)
+  assert.match(result.problem, /只有用户/)
+})
+
+test('收尾验收打回要写理由，并留在记录里', async () => {
+  const { state } = scenario()
+  await finishAll(state)
+  state.acceptRun({ summary: '跑过了', evidence: ['test：全绿'] })
+
+  const noReason = state.declineAcceptance({ by: 'user' })
+  assert.equal(noReason.ok, false)
+
+  const back = state.declineAcceptance({ by: 'user', reason: 'AC-2 没在真浏览器里看过' })
+  assert.equal(back.ok, true, back.problem)
+
+  const { project } = state.status()
+  assert.equal(project.allDone, false)
+  assert.equal(project.acceptancePending, false)
+  assert.equal(project.acceptanceRun.at(-1).status, 'returned')
+})
+
+test('还有部分没过时，不许做收尾验收', async () => {
+  const { state } = scenario()
+  state.nextPart()
+  await state.dispatchNext()
+  state.verifyPart({ part: 'P1', verdict: 'pass', reason: '对上' })
+
+  const result = state.acceptRun({ summary: '跑了', evidence: ['test：全绿'] })
+
+  assert.equal(result.ok, false)
+  assert.match(result.problem, /还有 1 个部分/)
 })
 
 test('完成的项目重开后仍显示完成', async () => {
@@ -62,6 +121,8 @@ test('完成的项目重开后仍显示完成', async () => {
   first.approvePlan({ by: 'user' })
   await first.dispatchNext()
   first.verifyPart({ part: 'P1', verdict: 'pass', reason: '对上' })
+  first.acceptRun({ summary: '跑了', evidence: ['test：全绿'] })
+  first.acceptProject({ by: 'user' })
 
   const reopened = createProjectState({ store })
   const { project } = reopened.status()
