@@ -263,6 +263,7 @@ test('部分报了阻塞时停下，不会反复重跑同一个部分', async ()
       status: 'blocked',
       summary: '缺接口文档',
       evidence: ['command：ls docs（空）'],
+      blockedCondition: 'missing-user-input',
       blockedReason: '需要用户提供接口文档',
     },
   }))

@@ -20,6 +20,7 @@ const TOOL_START = 'manager_start'
 const TOOL_PLAN = 'manager_plan'
 const TOOL_RUN = 'manager_run'
 const TOOL_VERIFY = 'manager_verify'
+const TOOL_BLOCK = 'manager_block'
 const COMMAND_NAME = 'manager'
 const STATUS_KEYWORD = 'status'
 const APPROVE_KEYWORD = 'approve'
@@ -41,7 +42,13 @@ const REPORT_SCHEMA = {
       description:
         '可复现的证据。每条以证据类型开头，例如「test：node --test 全绿」「command：ls 输出」；报完成时至少要有一条是这部分要求的类型',
     },
-    blockedReason: { type: 'string', description: '仅当 status 为 blocked 时必填' },
+    blockedReason: { type: 'string', description: '仅当 status 为 blocked 时必填：需要用户提供什么' },
+    blockedCondition: {
+      type: 'string',
+      enum: ['repeated-failure', 'missing-user-input', 'criteria-change'],
+      description:
+        '仅当 status 为 blocked 时必填：阻塞属于哪一种情形。repeated-failure 由插件自己数，不要自己声称',
+    },
   },
   required: ['status', 'summary', 'evidence'],
   additionalProperties: false,
@@ -204,6 +211,38 @@ export function apply(ctx) {
             ? `部分 ${result.part.id} 验收通过。`
             : `部分 ${result.part.id} 验收不通过，已回到可派分。`,
       }
+    },
+  })
+
+  registerTool(ctx, stateFor, {
+    name: TOOL_BLOCK,
+    description:
+      '请求阻塞，或查看当前的阻塞报告。只有三种情形可以阻塞：缺少只有用户能提供的东西、需要改动验收标准本身、同一部分连续两次同样的验收失败（后者由插件自己数，不由你声称）。不给 condition 时返回当前阻塞报告。',
+    parameters: {
+      type: 'object',
+      properties: {
+        part: { type: 'string', description: '部分编号，形如 P1；不给 condition 时忽略' },
+        condition: {
+          type: 'string',
+          enum: ['missing-user-input', 'criteria-change', 'repeated-failure'],
+          description: '阻塞属于哪一种情形',
+        },
+        detail: { type: 'string', description: '缺什么、或者为什么现有验收标准做不到' },
+        project: { type: 'string', description: '项目名；当前只有一个项目时可以省略' },
+      },
+      additionalProperties: false,
+    },
+    async run(args, state) {
+      if (!args?.condition) {
+        const report = state.blockReport({ project: args?.project })
+        if (!report.ok) return report
+        return { ok: true, text: report.text }
+      }
+
+      const result = state.requestBlock(args)
+      if (!result.ok) return result
+
+      return { ok: true, text: `部分 ${result.part.id} 已记为阻塞；把需要用户做的事摊清楚再停。` }
     },
   })
 
