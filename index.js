@@ -19,6 +19,7 @@ export const inject = ['commands', 'tools', 'workingDirectory', 'subagents']
 const TOOL_START = 'manager_start'
 const TOOL_PLAN = 'manager_plan'
 const TOOL_RUN = 'manager_run'
+const TOOL_VERIFY = 'manager_verify'
 const COMMAND_NAME = 'manager'
 const STATUS_KEYWORD = 'status'
 const APPROVE_KEYWORD = 'approve'
@@ -169,6 +170,38 @@ export function apply(ctx) {
       return {
         ok: true,
         text: `部分 ${result.part.id}「${result.part.title}」第 ${result.attempt} 次回报：${result.report.status}。${result.report.summary}`,
+      }
+    },
+  })
+
+  registerTool(ctx, stateFor, {
+    name: TOOL_VERIFY,
+    description:
+      '验收一个部分。子对话说完成只是候选，这里才决定算不算数：pass 要拿证据对上验收标准并写明理由；fail 要写明差在哪，该部分会被重新派分。',
+    parameters: {
+      type: 'object',
+      properties: {
+        part: { type: 'string', description: '部分编号，形如 P1' },
+        verdict: { type: 'string', enum: ['pass', 'fail'], description: '验收结论' },
+        reason: {
+          type: 'string',
+          description: 'pass 时写它怎么对上验收标准；fail 时写差在哪',
+        },
+        project: { type: 'string', description: '项目名；当前只有一个项目时可以省略' },
+      },
+      required: ['part', 'verdict', 'reason'],
+      additionalProperties: false,
+    },
+    async run(args, state) {
+      const result = state.verifyPart(args)
+      if (!result.ok) return result
+
+      return {
+        ok: true,
+        text:
+          result.verdict === 'pass'
+            ? `部分 ${result.part.id} 验收通过。`
+            : `部分 ${result.part.id} 验收不通过，已回到可派分。`,
       }
     },
   })

@@ -232,10 +232,11 @@ test('没配子对话执行器时明确报错，而不是假装派了', async ()
   assert.match(result.problem, /子对话/)
 })
 
-test('第一个部分完成后，下一次派分轮到它后面的部分', async () => {
+test('第一个部分验收通过后，下一次派分轮到它后面的部分', async () => {
   const { state } = approvedProject(async () => ({ ok: true, report: GOOD_REPORT }))
 
   const first = await state.dispatchNext()
+  state.verifyPart({ part: 'P1', verdict: 'pass', reason: 'AC-1 由测试覆盖' })
   const second = await state.dispatchNext()
 
   assert.equal(first.part.id, 'P1')
