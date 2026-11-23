@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # 本插件零运行时依赖，不装包也能跑。
+      - name: 模块能加载
+        run: node scripts/check.js
+
+      - name: 测试
+        run: node test/run.js
+
+      - name: 打包清单自检
+        run: node scripts/pack-check.js

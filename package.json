@@ -2,6 +2,25 @@
   "name": "dsh-manager",
   "version": "0.1.0",
   "description": "把一次项目交付拆成部分、分派给子对话、按验收标准收工。",
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "dsh-plugin",
+    "cordis",
+    "project",
+    "orchestration",
+    "subagents",
+    "acceptance"
+  ],
+  "author": "Ep1phanyw",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ep1phanyw/dsh-manager.git"
+  },
+  "homepage": "https://github.com/Ep1phanyw/dsh-manager#readme",
+  "bugs": {
+    "url": "https://github.com/Ep1phanyw/dsh-manager/issues"
+  },
   "type": "module",
   "main": "index.js",
   "exports": {
@@ -28,7 +47,8 @@
   },
   "scripts": {
     "check": "node scripts/check.js",
-    "test": "node test/run.js"
+    "test": "node test/run.js",
+    "pack:check": "node scripts/pack-check.js"
   },
   "license": "MIT"
 }
