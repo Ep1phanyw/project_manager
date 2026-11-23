@@ -424,11 +424,16 @@ function childRunner(ctx, parent, workspace) {
 function originChecker(workspace) {
   return (originId, slug) => {
     const dir = join(workspace, '.scratch', slug, 'issues')
-    if (!existsSync(dir)) return false
 
-    return readdirSync(dir).some(
-      (name) => name === `${originId}.md` || name.startsWith(`${originId}-`),
-    )
+    try {
+      if (!existsSync(dir)) return false
+      return readdirSync(dir).some(
+        (name) => name === `${originId}.md` || name.startsWith(`${originId}-`),
+      )
+    } catch {
+      // 读不动就当找不到：报「来源找不到」比抛一个 fs 错误更可读。
+      return false
+    }
   }
 }
 
