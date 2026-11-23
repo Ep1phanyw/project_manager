@@ -13,7 +13,7 @@ import { EVIDENCE_TYPES, createProjectState } from './lib/project-state.js'
 import { createFsStore } from './lib/store.js'
 
 import { formatBlockReport } from './lib/format.js'
-import { flowBrief, flowSkillRegistrations } from './lib/skills.js'
+import { FLOW, flowBrief, flowSkillRegistrations } from './lib/skills.js'
 
 export const name = 'dsh-manager'
 
@@ -422,12 +422,37 @@ function registerFlowSkills(ctx) {
 async function bootstrap(ctx, invocation) {
   const brief = flowBrief()
   const nudged = await nudgeSession(ctx, invocation.agent, brief, invocation.signal)
+  const shadowed = await shadowedSkills(ctx)
 
   const header = nudged.ok
     ? '还没有项目。这条流程已经排进本会话，主对话接下来会按顺序开始访谈。'
     : `还没有项目。流程在下面；自动排进会话失败了（${nudged.reason}）—— 你回一句「开始」，我就照它做。`
 
-  return { kind: 'success', text: `${header}\n\n${brief}` }
+  const warning =
+    shadowed.length === 0
+      ? ''
+      : `\n\n注意：本机 ~/.agents/skills/ 里已装同名技能（${shadowed.join('、')}），它们是「只给用户」的，插件自带的那份没有生效。` +
+        `要让插件自带版本接手，把它们从 ~/.agents/skills/ 移走；否则这几步得你敲 /<技能名> 手动触发。`
+
+  return { kind: 'success', text: `${header}${warning}\n\n${brief}` }
+}
+
+/** 有哪些技能被本机同名的「只给用户」条目盖住了。 */
+async function shadowedSkills(ctx) {
+  const skills = typeof ctx.get === 'function' ? ctx.get('skills') : undefined
+  if (!skills || typeof skills.list !== 'function') return []
+
+  try {
+    const list = await skills.list({})
+    const byName = new Map(list.map((entry) => [entry.name, entry]))
+
+    return FLOW.map((skill) => skill.name).filter((name) => {
+      const entry = byName.get(name)
+      return entry !== undefined && entry.invocation?.modelInvocable === false
+    })
+  } catch {
+    return []
+  }
 }
 
 /** 给当前会话排一条消息，让它真的动起来。失败时把原因带回去，不静默。 */
