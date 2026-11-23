@@ -390,20 +390,23 @@ function childRunner(ctx, parent, workspace) {
 /** 还没项目时：把「grill → to-spec → to-tickets」这条流程交出去。 */
 async function bootstrap(ctx, invocation) {
   const brief = flowBrief()
-  const queued = await nudgeSession(ctx, invocation.agent, brief)
+  const nudged = await nudgeSession(ctx, invocation.agent, brief)
 
-  const header = queued
+  const header = nudged.ok
     ? '还没有项目。这条流程已经排进本会话，主对话接下来会按顺序开始访谈。'
-    : '还没有项目。流程在下面；我没能自动排进会话 —— 你回一句「开始」，我就照它做。'
+    : `还没有项目。流程在下面；自动排进会话失败了（${nudged.reason}）—— 你回一句「开始」，我就照它做。`
 
   return { kind: 'success', text: `${header}\n\n${brief}` }
 }
 
-/** 给当前会话排一条消息，让它真的动起来。失败就返回 false，由调用方退化。 */
+/** 给当前会话排一条消息，让它真的动起来。失败时把原因带回去，不静默。 */
 async function nudgeSession(ctx, agent, text) {
   try {
     const controller = ctx.get('sessionController')
-    if (!controller || typeof controller.prompt !== 'function') return false
+    if (!controller) return { ok: false, reason: '拿不到 sessionController 服务' }
+    if (typeof controller.prompt !== 'function') {
+      return { ok: false, reason: 'sessionController 上没有 prompt 方法' }
+    }
 
     await controller.prompt({
       requestId: `dsh-manager-flow-${Date.now()}`,
@@ -411,9 +414,9 @@ async function nudgeSession(ctx, agent, text) {
       mode: 'queue',
       content: [{ type: 'text', text }],
     })
-    return true
-  } catch {
-    return false
+    return { ok: true }
+  } catch (error) {
+    return { ok: false, reason: error instanceof Error ? error.message : String(error) }
   }
 }
 
