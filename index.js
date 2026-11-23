@@ -14,6 +14,7 @@ import { EVIDENCE_TYPES, createProjectState } from './lib/project-state.js'
 import { createFsStore } from './lib/store.js'
 
 import { formatBlockReport } from './lib/format.js'
+import { readEvidenceTypes, readSnapshotMode } from './lib/config.js'
 import { FLOW, flowBrief, flowSkillRegistrations, readSkill } from './lib/skills.js'
 import { surveyWorkspace, workspaceContext } from './lib/workspace.js'
 
@@ -80,7 +81,16 @@ const TEXT_OUTPUT = {
   render: (_args, value) => [{ type: 'text', text: String(value?.text ?? '') }],
 }
 
-export function apply(ctx) {
+export function apply(ctx, config) {
+  // 版本跨度放宽之后，先确认这个 DSH 版本给的能力还在：
+  // 少一个就如实不动，而不是抛一身栈给用户。
+  if (typeof ctx.commands?.register !== 'function' || typeof ctx.tools?.register !== 'function') {
+    return
+  }
+
+  const snapshotMode = readSnapshotMode(config)
+  const evidenceTypes = readEvidenceTypes(config)
+
   registerFlowSkills(ctx)
 
   /** 每次调用都按它所在会话的工作区解析状态目录，状态天然跟随会话。 */
@@ -92,7 +102,8 @@ export function apply(ctx) {
       runChild: childRunner(ctx, agent, workspace),
       hasOrigin: originChecker(workspace),
       contextFiles: () => workspaceContext(workspace),
-      snapshot: snapshotter(workspace),
+      snapshot: snapshotMode === 'off' ? null : snapshotter(workspace, snapshotMode),
+      evidenceTypes,
     })
   }
 
@@ -152,7 +163,7 @@ export function apply(ctx) {
               },
               evidence: {
                 type: 'string',
-                enum: EVIDENCE_TYPES,
+                enum: evidenceTypes,
                 description: '这部分靠什么证据说明完成',
               },
             },
@@ -487,26 +498,35 @@ function childRunner(ctx, parent, workspace) {
 /**
  * 验收通过后给工作区打一个 git 快照，留一个能回去的点。
  *
- * 只做 add + commit，不认识分支；工作区不是仓库、没有改动、或者钩子报错，
- * 都只是没有快照，不影响验收本身。用 stdio:'ignore' 是因为这个沙箱不允许
- * 抓子进程的 stdout。
+ * 默认只提交这个部分声明的文件 —— 在别人的仓库里 `add -A` 会把无关的活
+ * 一起卷进去。要提交整个工作区得显式配置 `snapshot: all`。
+ * 用 stdio:'ignore' 是因为这个沙箱不允许抓子进程的 stdout。
  */
-function snapshotter(workspace) {
+function snapshotter(workspace, mode) {
   return ({ part } = {}) => {
     if (!existsSync(join(workspace, '.git'))) {
       return { ok: false, problem: '工作区不是 git 仓库，没有打快照' }
     }
 
+    const files = part?.files ?? []
+    if (mode !== 'all' && files.length === 0) {
+      return { ok: false, problem: '这个部分没有声明文件，没东西可提交' }
+    }
+
     const message = `dsh-manager: ${part?.id ?? '?'} 完成 — ${part?.title ?? ''}`.trim()
+    const addArgs =
+      mode === 'all'
+        ? ['-C', workspace, 'add', '-A']
+        : ['-C', workspace, 'add', '--', ...files]
 
     try {
-      execFileSync('git', ['-C', workspace, 'add', '-A'], { stdio: 'ignore' })
+      execFileSync('git', addArgs, { stdio: 'ignore' })
       execFileSync('git', ['-C', workspace, 'commit', '--quiet', '-m', message], {
         stdio: 'ignore',
       })
-      return { ok: true, message }
+      return { ok: true, message, mode }
     } catch {
-      return { ok: false, problem: 'git 提交没成功（可能没有改动，或钩子报错）' }
+      return { ok: false, problem: 'git 提交没成功（可能没有改动、路径不存在，或钩子报错）' }
     }
   }
 }

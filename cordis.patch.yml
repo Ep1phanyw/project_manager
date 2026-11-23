@@ -1,5 +1,24 @@
 # dsh-manager 的 bundle patch —— 把插件挂进 DSH 配置树。
 # id 与包名一致，避免与其它插件的行标识冲突。
+#
+# 可选配置（不写就用默认值）：
+#
+#   snapshot: off | files | all
+#     验收通过后要不要打 git 快照。默认 files：只提交这个部分声明的文件，
+#     不碰工作区里别的东西。all 会 `git add -A`，把无关改动一起卷进去。
+#
+#   evidenceTypes: [review, screenshot, manual]
+#     在默认的 test / build / command / artifact 之外再加证据类型。
+#
+# 也可以只写环境变量 DSH_MANAGER_SNAPSHOT=off（配置优先）。
+#
+# 例：
+# - insert:
+#     - id: dsh-manager
+#       name: 'dsh-manager'
+#       config:
+#         snapshot: files
+#         evidenceTypes: [review]
 
 - insert:
     - id: dsh-manager
