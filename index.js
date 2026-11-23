@@ -7,7 +7,8 @@
 
 import { join } from 'node:path'
 
-import { createOrchestrator, formatStatus } from './lib/orchestrator.js'
+import { formatStatus } from './lib/format.js'
+import { createProjectState } from './lib/project-state.js'
 import { createFsStore } from './lib/store.js'
 
 export const name = 'dsh-manager'
@@ -17,12 +18,13 @@ export const inject = ['commands', 'tools', 'workingDirectory']
 
 const TOOL_NAME = 'manager_start'
 const COMMAND_NAME = 'manager'
+const STATUS_KEYWORD = 'status'
 
 export function apply(ctx) {
   /** 每次调用都按它所在会话的工作区解析状态目录，状态天然跟随会话。 */
-  async function orchestratorFor(agent) {
+  async function stateFor(agent) {
     const workspace = await ctx.workingDirectory.ensure(agent)
-    return createOrchestrator({ store: createFsStore(join(workspace, '.scratch')) })
+    return createProjectState({ store: createFsStore(join(workspace, '.scratch')) })
   }
 
   ctx.effect(
@@ -59,9 +61,10 @@ export function apply(ctx) {
           render: (_args, value) => [{ type: 'text', text: String(value?.text ?? '') }],
         },
         async execute(args, exec) {
-          const orchestrator = await orchestratorFor(exec.agent)
-          const result = orchestrator.startProject(args)
+          const state = await stateFor(exec.agent)
+          const result = state.startProject(args)
           if (!result.ok) throw new Error(result.problem)
+
           return {
             ok: true,
             slug: result.slug,
@@ -76,11 +79,13 @@ export function apply(ctx) {
     () =>
       ctx.commands.register({
         name: COMMAND_NAME,
-        description: '查看项目状态与验收标准；多个项目时用 /manager <项目名> 指定',
-        input: { hint: '[项目名]' },
+        description: '查看项目状态与验收标准：/manager 或 /manager status；多个项目时用 /manager <项目名>',
+        input: { hint: '[status | 项目名]' },
         async handler(invocation) {
-          const orchestrator = await orchestratorFor(invocation.agent)
-          const result = orchestrator.status(invocation.rawInput.trim())
+          const state = await stateFor(invocation.agent)
+          const raw = invocation.rawInput.trim()
+          const result = state.status(raw === STATUS_KEYWORD ? '' : raw)
+
           if (!result.ok) return { kind: 'error', text: result.problem }
           return { kind: 'success', text: formatStatus(result.project) }
         },

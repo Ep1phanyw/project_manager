@@ -24,7 +24,7 @@
     }
   },
   "scripts": {
-    "test": "node test/registration.test.js && node test/orchestrator.test.js"
+    "test": "node test/registration.test.js && node test/project-state.test.js"
   },
   "license": "MIT"
 }
