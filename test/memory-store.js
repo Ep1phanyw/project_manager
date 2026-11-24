@@ -4,6 +4,7 @@
  */
 export function memoryStore() {
   const projects = new Map()
+  const backups = new Map()
 
   return {
     listProjects: () => [...projects.keys()].sort(),
@@ -17,5 +18,12 @@ export function memoryStore() {
       }
       projects.set(slug, { ...current, ...documents })
     },
+    backup: (slug, documents) => {
+      const list = backups.get(slug) ?? []
+      list.push({ ...documents })
+      backups.set(slug, list)
+      return `backup-v1`
+    },
+    backupsFor: (slug) => backups.get(slug) ?? [],
   }
 }
