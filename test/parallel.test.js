@@ -68,6 +68,30 @@ test('互不依赖、文件集不相交的部分一次派出去，真的同时�
   assert.equal(result.failed, 0)
 })
 
+test('结果按完成顺序返回：先回来的先验收', async () => {
+  const store = memoryStore()
+  const state = machine(store, {
+    runChild: async (task) => {
+      // P1 慢、P2 快：返回顺序应该是 P2、P1。
+      const wait = task.part.id === 'P1' ? 12 : 2
+      await new Promise((resolve) => setTimeout(resolve, wait))
+      return DONE
+    },
+  })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: acceptance(2) })
+  state.submitPlan({ parts: INDEPENDENT })
+  state.approvePlan({ by: 'user' })
+
+  const result = await state.dispatchAll()
+
+  assert.deepEqual(result.parts, ['P1', 'P2'], '计划顺序不变')
+  assert.deepEqual(
+    result.results.map((one) => one.part.id),
+    ['P2', 'P1'],
+    '结果按谁先回来排',
+  )
+})
+
 test('一个部分在飞的时候，另一条在飞记录不会被覆盖掉', async () => {
   let atLaunch = ''
   const store = memoryStore()

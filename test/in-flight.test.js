@@ -123,6 +123,34 @@ test('解除中断只认用户', () => {
   assert.match(result.problem, /用户/)
 })
 
+test('两次派分同时进来，同一个部分只起一次子对话', async () => {
+  let launches = 0
+  const store = memoryStore()
+  const state = createProjectState({
+    store,
+    now: () => Date.parse(AT),
+    runCommand: () => ({ code: 0, output: 'ok' }),
+    processId: 'pid-1',
+    runChild: async () => {
+      launches += 1
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      return DONE
+    },
+  })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: checked(['一条']) })
+  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
+  state.approvePlan({ by: 'user' })
+
+  // 两次派分同时进来：读闸门都看不到在飞，写闸门必须拦住第二次。
+  const [first, second] = await Promise.all([state.dispatchAll(), state.dispatchAll()])
+
+  assert.equal(launches, 1, '同一个部分只该起一次子对话')
+  const rejected = first.ok ? second : first
+  assert.equal(rejected.ok, false)
+  assert.match(rejected.problem, /正在派分中/)
+  assert.equal((store.read('demo').parts.match(/第 1 次/g) ?? []).length, 1, '台账里只有一条派分')
+})
+
 test('同进程的第二次派分不会把在飞记录落成两条', async () => {
   const { store } = scenario()
   const state = createProjectState({

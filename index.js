@@ -15,6 +15,7 @@ import { createFsStore } from './lib/store.js'
 
 import { formatBlockReport } from './lib/format.js'
 import { readEvidenceTypes, readParallelLimit, readSnapshotMode } from './lib/config.js'
+import { describeCapabilities } from './lib/capabilities.js'
 import { FLOW, flowBrief, flowSkillRegistrations, readSkill } from './lib/skills.js'
 import { strayChanges } from './lib/git.js'
 import { runCommandCapture } from './lib/exec.js'
@@ -112,6 +113,13 @@ export function apply(ctx, config) {
 
     const detected = detectDshVersion()
 
+    // 四项核心能力先按纯函数算：在不在、缺了会怎样。
+    const available = new Set()
+    if (typeof ctxRef.commands?.register === 'function') available.add('commands')
+    if (typeof ctxRef.tools?.register === 'function') available.add('tools')
+    if (typeof ctxRef.workingDirectory?.ensure === 'function') available.add('workingDirectory')
+    if (typeof ctxRef.get?.('subagents')?.startActivation === 'function') available.add('subagents')
+
     return formatDoctorReport({
       version: detected.version,
       versionSource: detected.source,
@@ -119,17 +127,11 @@ export function apply(ctx, config) {
       workspace,
       projects: createFsStore(join(workspace, '.scratch')).listProjects(),
       capabilities: [
-        { name: 'commands.register', ok: typeof ctxRef.commands?.register === 'function' },
-        { name: 'tools.register', ok: typeof ctxRef.tools?.register === 'function' },
-        {
-          name: 'workingDirectory.ensure',
-          ok: typeof ctxRef.workingDirectory?.ensure === 'function',
-        },
-        {
-          name: 'subagents.startActivation',
-          ok: typeof ctxRef.get?.('subagents')?.startActivation === 'function',
-          note: '派分要用；缺了仍能规划与看状态',
-        },
+        ...describeCapabilities(available).map((item) => ({
+          name: item.name,
+          ok: item.present,
+          note: item.consequence,
+        })),
         {
           name: 'sessionController.prompt',
           ok: typeof ctxRef.get?.('sessionController')?.prompt === 'function',
@@ -163,6 +165,8 @@ export function apply(ctx, config) {
   /** 每次调用都按它所在会话的工作区解析状态目录，状态天然跟随会话。 */
   async function stateFor(agent) {
     const workspace = await ctx.workingDirectory.ensure(agent)
+    const runInWorkspace = (command) => runCommandCapture(command, { cwd: workspace })
+
     return createProjectState({
       store: createFsStore(join(workspace, '.scratch')),
       commandName: COMMAND_NAME,
@@ -172,9 +176,9 @@ export function apply(ctx, config) {
       snapshot: snapshotMode === 'off' ? null : snapshotter(workspace, snapshotMode),
       evidenceTypes,
       strayCheck: (part) => strayChanges(workspace, part.files),
-      runVerify: (command) => runCommandCapture(command, { cwd: workspace }),
-      // 验收时插件亲自跑检查：一条命令、或者一个产物。
-      runCommand: (command) => runCommandCapture(command, { cwd: workspace }),
+      // 项目级整体检查与逐条检查跑的是同一条受控通道。
+      runVerify: runInWorkspace,
+      runCommand: runInWorkspace,
       readFile: (path) => readWorkspaceFile(workspace, path),
       maxParallel: readParallelLimit(config),
       capacity: () => {
@@ -324,7 +328,7 @@ export function apply(ctx, config) {
       }
 
       const lines = result.results.map((one) => {
-        if (!one.ok) return `部分 ${one.provider ?? ''}${one.part?.id ?? ''}：${one.problem}`
+        if (!one.ok) return `部分 ${one.part?.id ?? '未知'}：${one.problem}`
         const stray =
           one.stray?.length > 0
             ? `\n  注意：改到了声明之外的文件 —— ${one.stray.join('、')}`

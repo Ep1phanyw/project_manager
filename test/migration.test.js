@@ -13,7 +13,6 @@ const LEGACY = {
   plan: '# 计划\n\n## [P1] 做登录页\n\n- 依赖：无\n- 证据：test\n- 文件：src/login.js\n',
   parts: '# 部分记录\n',
 }
-
 function legacyProject() {
   const store = memoryStore()
   store.write('demo', LEGACY)
@@ -55,27 +54,70 @@ test('旧格式项目不许动：派分与验收都提示先迁移', async () =>
   assert.match(dispatch.problem, /旧格式/)
 })
 
-test('迁移先备份，再把标准迁成新格式并退回规划阶段', () => {
+test('迁移先备份，把标准迁成新格式，旧计划补上覆盖后退回待批准', () => {
   const { store, state } = legacyProject()
 
   const result = state.migrateProject({ by: 'user' })
 
   assert.equal(result.ok, true)
   assert.equal(result.count, 2)
+  assert.equal(result.parts, 1)
   assert.equal(store.backupsFor('demo').length, 1, '迁移前必须留一份备份')
   assert.match(store.backupsFor('demo')[0].acceptance, /- \[AC-1\] 能登录/, '备份里是旧内容')
 
   const after = store.read('demo')
   assert.match(after.project, /格式：2/)
-  assert.match(after.project, /阶段：planning/)
+  assert.match(after.project, /阶段：awaiting-approval/, '旧计划补了覆盖，但要用户重新批准')
   assert.match(after.project, /## 验收/)
   assert.match(after.acceptance, /## \[AC-1\] 能登录/)
   assert.match(after.acceptance, /- 检查：判断型/)
+  assert.match(after.plan, /- 覆盖：AC-1/)
+  assert.match(after.plan, /- 覆盖：AC-2/)
 
   const status = state.status('demo')
   assert.equal(status.ok, true)
   assert.equal(status.project.legacy, false)
   assert.equal(status.project.acceptance[0].check.kind, 'judgement')
+  assert.equal(status.project.planProblem, '', '迁移后的计划要读得出来')
+})
+
+test('迁移不丢历史记录，也不丢退役的编号', () => {
+  const store = memoryStore()
+  store.write('demo', {
+    project:
+      '# demo\n\n阶段：executing\n\n## 目标\n\n把登录做出来\n\n## 验收\n\n- AC-1 在\n- AC-2 退役\n\n## 审批\n\n- 2026-11-23T05:00:00.000Z 批准\n',
+    acceptance: '# 验收标准\n\n- [AC-1] 能登录\n',
+    plan: '# 计划\n\n## [P1] 做登录页\n\n- 依赖：无\n- 证据：test\n- 文件：src/login.js\n',
+    parts: [
+      '# 部分记录',
+      '',
+      '## [P1] 第 1 次 · 2026-11-23T06:00:00.000Z',
+      '',
+      '- 状态：done',
+      '',
+      '### 摘要',
+      '',
+      '  做完了',
+      '',
+    ].join('\n'),
+  })
+
+  const state = createProjectState({
+    store,
+    now: () => Date.parse(AT),
+    runCommand: () => ({ code: 0, output: 'ok' }),
+    runChild: async () => ({ ok: true, report: { status: 'done', summary: '做完了', evidence: ['test：ok'] } }),
+  })
+
+  assert.equal(state.migrateProject({ by: 'user' }).ok, true)
+
+  const after = store.read('demo')
+  assert.match(after.project, /- AC-2 退役/, '退役登记不能因为迁移丢掉')
+  assert.match(after.parts, /第 1 次/, '历史记录不能因为迁移丢掉')
+
+  const status = state.status('demo')
+  assert.equal(status.project.records.length, 1)
+  assert.equal(status.project.partStatus.P1, 'done')
 })
 
 test('迁移过的项目不能再迁一次', () => {
