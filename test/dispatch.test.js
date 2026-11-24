@@ -19,8 +19,8 @@ function approvedProject(runChild) {
   state.startProject({ name: 'demo', goal: '把登录流程做出来', acceptance: judged(['能登录']) })
   state.submitPlan({
     parts: [
-      { title: '做登录页', files: ['src/login.js'], evidence: 'test' },
-      { title: '接后端', dependsOn: ['P1'], files: ['src/api.js'], evidence: 'test' },
+      { title: '做登录页', files: ['src/login.js'], evidence: 'test', covers: ['AC-1'] },
+      { title: '接后端', dependsOn: ['P1'], files: ['src/api.js'], evidence: 'test', covers: ['AC-1'] },
     ],
   })
   state.approvePlan({ by: 'user' })
@@ -184,7 +184,7 @@ test('记录会落盘，换个实例仍能读回状态与轮次', async () => {
   const store = memoryStore()
   const first = createProjectState({ store, now: () => Date.parse(AT), runChild: async () => ({ ok: true, report: GOOD_REPORT }) })
   first.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
-  first.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
+  first.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   first.approvePlan({ by: 'user' })
   await first.dispatchNext()
 
@@ -224,7 +224,7 @@ test('未批准时派分被挡住，子对话根本不会被起', async () => {
     },
   })
   state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
-  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
+  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
 
   const result = await state.dispatchNext()
 
@@ -237,7 +237,7 @@ test('没配子对话执行器时明确报错，而不是假装派了', async ()
   const store = memoryStore()
   const state = createProjectState({ store, now: () => Date.parse(AT) })
   state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
-  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
+  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   state.approvePlan({ by: 'user' })
 
   const result = await state.dispatchNext()
@@ -290,7 +290,7 @@ test('子对话的任务描述里会点出既有约定文件', async () => {
     contextFiles: () => ['README.md', 'GLOSSARY.md'],
   })
   state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
-  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
+  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   state.approvePlan({ by: 'user' })
 
   await state.dispatchNext()

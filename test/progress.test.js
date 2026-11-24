@@ -27,8 +27,8 @@ function scenario(responses = [DONE, DONE]) {
   state.startProject({ name: 'demo', goal: '把登录流程做出来', acceptance: judged(['能登录']) })
   state.submitPlan({
     parts: [
-      { title: '做登录页', files: ['src/login.js'], evidence: 'test' },
-      { title: '接后端', dependsOn: ['P1'], files: ['src/api.js'], evidence: 'test' },
+      { title: '做登录页', files: ['src/login.js'], evidence: 'test', covers: ['AC-1'] },
+      { title: '接后端', dependsOn: ['P1'], files: ['src/api.js'], evidence: 'test', covers: ['AC-1'] },
     ],
   })
   state.approvePlan({ by: 'user' })
@@ -118,7 +118,7 @@ test('完成的项目重开后仍显示完成', async () => {
   const store = memoryStore()
   const first = createProjectState({ store, now: () => Date.parse(AT), runChild: async () => DONE })
   first.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
-  first.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
+  first.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   first.approvePlan({ by: 'user' })
   await first.dispatchNext()
   first.verifyPart({ part: 'P1', verdict: 'pass', reason: '对上' })
@@ -148,7 +148,7 @@ test('阻塞的项目重开后仍显示同一个阻塞原因', async () => {
   const store = memoryStore()
   const first = createProjectState({ store, now: () => Date.parse(AT), runChild: async () => DONE })
   first.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
-  first.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
+  first.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   first.approvePlan({ by: 'user' })
   await first.dispatchNext()
   first.verifyPart({ part: 'P1', verdict: 'fail', reason: '同一个原因' })
@@ -214,8 +214,8 @@ test('重开后能接着跑，不需要重新批准计划', async () => {
   first.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
   first.submitPlan({
     parts: [
-      { title: '甲', files: ['a.js'], evidence: 'test' },
-      { title: '乙', dependsOn: ['P1'], files: ['b.js'], evidence: 'test' },
+      { title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] },
+      { title: '乙', dependsOn: ['P1'], files: ['b.js'], evidence: 'test', covers: ['AC-1'] },
     ],
   })
   first.approvePlan({ by: 'user' })

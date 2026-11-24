@@ -239,7 +239,7 @@ export function apply(ctx, config) {
   registerTool(ctx, stateFor, {
     name: TOOL_PLAN,
     description:
-      '提交项目计划：每个部分声明它依赖哪些部分、会改哪些文件、用什么证据说明自己做完了。依赖成环、或者两个部分改同一批文件却没有先后关系，都会被拒绝。',
+      '提交项目计划：每个部分声明它依赖哪些部分、会改哪些文件、用什么证据说明自己做完了，以及对应哪几条验收标准。依赖成环、两个部分改同一批文件却没有先后关系、有验收标准没被任何部分覆盖，都会被拒绝。',
     parameters: {
       type: 'object',
       properties: {
@@ -266,8 +266,13 @@ export function apply(ctx, config) {
                 enum: evidenceTypes,
                 description: '这部分靠什么证据说明完成',
               },
+              covers: {
+                type: 'array',
+                items: { type: 'string' },
+                description: '这部分对应哪几条验收标准（编号，如 AC-1）：每条标准都得有部分管',
+              },
             },
-            required: ['title', 'files', 'evidence'],
+            required: ['title', 'files', 'evidence', 'covers'],
             additionalProperties: false,
           },
         },

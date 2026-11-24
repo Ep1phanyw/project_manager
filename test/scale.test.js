@@ -25,7 +25,7 @@ function stateOn(store) {
 async function finishP1(store) {
   let state = stateOn(store)
   state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
-  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
+  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   state.approvePlan({ by: 'user' })
 
   state = stateOn(store)
@@ -40,8 +40,8 @@ test('改计划加一个新部分时，没动过的部分保留验收记录', as
 
   const result = state.submitPlan({
     parts: [
-      { id: 'P1', title: '甲', files: ['a.js'], evidence: 'test' },
-      { id: 'P2', title: '乙', dependsOn: ['P1'], files: ['b.js'], evidence: 'test' },
+      { id: 'P1', title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] },
+      { id: 'P2', title: '乙', dependsOn: ['P1'], files: ['b.js'], evidence: 'test', covers: ['AC-1'] },
     ],
   })
 
@@ -60,8 +60,8 @@ test('改了某个部分的定义，只有它的记录被丢掉', async () => {
 
   state.submitPlan({
     parts: [
-      { id: 'P1', title: '甲改过了', files: ['a.js'], evidence: 'test' },
-      { id: 'P2', title: '乙', dependsOn: ['P1'], files: ['b.js'], evidence: 'test' },
+      { id: 'P1', title: '甲改过了', files: ['a.js'], evidence: 'test', covers: ['AC-1'] },
+      { id: 'P2', title: '乙', dependsOn: ['P1'], files: ['b.js'], evidence: 'test', covers: ['AC-1'] },
     ],
   })
 
@@ -75,8 +75,8 @@ test('文件和依赖的顺序不同不算改定义', async () => {
   state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
   state.submitPlan({
     parts: [
-      { id: 'P1', title: '甲', files: ['a.js', 'b.js'], evidence: 'test' },
-      { id: 'P2', title: '乙', dependsOn: ['P1'], files: ['c.js'], evidence: 'test' },
+      { id: 'P1', title: '甲', files: ['a.js', 'b.js'], evidence: 'test', covers: ['AC-1'] },
+      { id: 'P2', title: '乙', dependsOn: ['P1'], files: ['c.js'], evidence: 'test', covers: ['AC-1'] },
     ],
   })
   state.approvePlan({ by: 'user' })
@@ -87,8 +87,8 @@ test('文件和依赖的顺序不同不算改定义', async () => {
 
   const result = again.submitPlan({
     parts: [
-      { id: 'P1', title: '甲', files: ['b.js', 'a.js'], evidence: 'test' },
-      { id: 'P2', title: '乙', dependsOn: ['P1'], files: ['c.js'], evidence: 'test' },
+      { id: 'P1', title: '甲', files: ['b.js', 'a.js'], evidence: 'test', covers: ['AC-1'] },
+      { id: 'P2', title: '乙', dependsOn: ['P1'], files: ['c.js'], evidence: 'test', covers: ['AC-1'] },
     ],
   })
 
@@ -101,14 +101,14 @@ test('把阻塞的部分从计划里删掉是被允许的', async () => {
   state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
   state.submitPlan({
     parts: [
-      { id: 'P1', title: '甲', files: ['a.js'], evidence: 'test' },
-      { id: 'P2', title: '乙', files: ['b.js'], evidence: 'test' },
+      { id: 'P1', title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] },
+      { id: 'P2', title: '乙', files: ['b.js'], evidence: 'test', covers: ['AC-1'] },
     ],
   })
   state.approvePlan({ by: 'user' })
   state.requestBlock({ part: 'P2', condition: 'missing-user-input', detail: '缺东西' })
 
-  const result = state.submitPlan({ parts: [{ id: 'P1', title: '甲', files: ['a.js'], evidence: 'test' }] })
+  const result = state.submitPlan({ parts: [{ id: 'P1', title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
 
   assert.equal(result.ok, true, result.problem)
 })
@@ -117,11 +117,11 @@ test('还在阻塞的部分留着，就不许改计划', () => {
   const store = memoryStore()
   const state = stateOn(store)
   state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
-  state.submitPlan({ parts: [{ id: 'P1', title: '甲', files: ['a.js'], evidence: 'test' }] })
+  state.submitPlan({ parts: [{ id: 'P1', title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   state.approvePlan({ by: 'user' })
   state.requestBlock({ part: 'P1', condition: 'missing-user-input', detail: '缺东西' })
 
-  const result = state.submitPlan({ parts: [{ id: 'P1', title: '甲', files: ['a.js'], evidence: 'test' }] })
+  const result = state.submitPlan({ parts: [{ id: 'P1', title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
 
   assert.equal(result.ok, false)
   assert.match(result.problem, /阻塞/)
@@ -140,7 +140,7 @@ test('验收通过时会打快照，失败不会', async () => {
     },
   })
   state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
-  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
+  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   state.approvePlan({ by: 'user' })
   await state.dispatchNext()
 
@@ -179,7 +179,7 @@ test('放弃之后别的操作全停手，但状态还看得见', () => {
   assert.equal(status.ok, true)
   assert.equal(status.project.phase, 'abandoned')
 
-  const plan = state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
+  const plan = state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   assert.equal(plan.ok, false)
   assert.match(plan.problem, /已经放弃/)
 
@@ -191,7 +191,7 @@ test('改完验收标准后用 reopenCriteria 重新纳入流程，强制重新�
   const store = memoryStore()
   const state = stateOn(store)
   state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
-  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
+  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   state.approvePlan({ by: 'user' })
 
   // 用户手改验收标准：指纹对不上，派分被挡住
@@ -234,7 +234,7 @@ test('快照自己抛错不影响验收', async () => {
     },
   })
   state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
-  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
+  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   state.approvePlan({ by: 'user' })
   await state.dispatchNext()
 

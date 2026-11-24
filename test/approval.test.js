@@ -14,8 +14,8 @@ function withPlan() {
   state.startProject({ name: 'demo', goal: '把登录流程做出来', acceptance: judged(['能登录']) })
   state.submitPlan({
     parts: [
-      { title: '做登录页', files: ['src/login.js'], evidence: 'test' },
-      { title: '接后端', dependsOn: ['P1'], files: ['src/api.js'], evidence: 'test' },
+      { title: '做登录页', files: ['src/login.js'], evidence: 'test', covers: ['AC-1'] },
+      { title: '接后端', dependsOn: ['P1'], files: ['src/api.js'], evidence: 'test', covers: ['AC-1'] },
     ],
   })
   return { store, state }
@@ -90,7 +90,7 @@ test('批准记录会写进项目状态，换个实例仍能看到', () => {
   const workspace = memoryStore()
   const first = createProjectState({ store: workspace, now: () => Date.parse(AT) })
   first.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
-  first.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
+  first.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   first.approvePlan({ by: 'user' })
 
   const reopened = createProjectState({ store: workspace })
@@ -118,7 +118,7 @@ test('用户驳回后回到规划阶段，并能重新提交计划', () => {
   assert.equal(state.status().project.phase, 'planning')
 
   const resubmitted = state.submitPlan({
-    parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }],
+    parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }],
   })
   assert.equal(resubmitted.ok, true)
   assert.equal(state.status().project.phase, 'awaiting-approval')
@@ -151,7 +151,7 @@ test('已批准的计划可以被改，但会留痕并退回待批准', () => {
   state.approvePlan({ by: 'user' })
 
   const revised = state.submitPlan({
-    parts: [{ title: '换一份更细的', files: ['a.js'], evidence: 'test' }],
+    parts: [{ title: '换一份更细的', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }],
   })
 
   assert.equal(revised.ok, true)
@@ -166,7 +166,7 @@ test('已批准的计划可以被改，但会留痕并退回待批准', () => {
 test('计划改过之后必须重新批准才能派分', () => {
   const { state } = withPlan()
   state.approvePlan({ by: 'user' })
-  state.submitPlan({ parts: [{ title: '换一份', files: ['a.js'], evidence: 'test' }] })
+  state.submitPlan({ parts: [{ title: '换一份', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
 
   const blocked = state.nextPart()
   assert.equal(blocked.ok, false)
@@ -238,7 +238,7 @@ test('计划里有部分带来源时，批准不会炸', () => {
 
   state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
   state.submitPlan({
-    parts: [{ title: '甲', origin: '03', files: ['a.js'], evidence: 'test' }],
+    parts: [{ title: '甲', origin: '03', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }],
   })
 
   const result = state.approvePlan({ by: 'user' })
@@ -252,8 +252,8 @@ test('有依赖的部分先不派，先挑没有依赖的那个', () => {
   const state = createProjectState({ store, now: () => Date.parse(AT) })
   state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
   state.submitPlan({
-    parts: [{ title: '甲', dependsOn: ['P2'], files: ['a.js'], evidence: 'test' },
-            { title: '乙', files: ['b.js'], evidence: 'test' }],
+    parts: [{ title: '甲', dependsOn: ['P2'], files: ['a.js'], evidence: 'test', covers: ['AC-1'] },
+            { title: '乙', files: ['b.js'], evidence: 'test', covers: ['AC-1'] }],
   })
   state.approvePlan({ by: 'user' })
 

@@ -90,7 +90,7 @@ test('/manager approve 走用户路径，批准后阶段变成执行', async () 
       { agent: {} },
     )
     await plan.execute(
-      { parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] },
+      { parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] },
       { agent: {} },
     )
 
@@ -113,7 +113,7 @@ test('/manager reject 驳回后回到规划，并记下理由', async () => {
       .execute({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) }, { agent: {} })
     await tools
       .find((tool) => tool.name === 'manager_plan')
-      .execute({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] }, { agent: {} })
+      .execute({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] }, { agent: {} })
 
     const rejected = await commands[0].handler({
       rawInput: 'reject 第二部分太粗',
@@ -143,14 +143,14 @@ test('计划里的来源必须真的存在，写错编号会被拒', async () =>
     writeFileSync(join(workspace.dir, '.scratch', 'demo', 'issues', '03-do-thing.md'), '# 03\n')
 
     await plan.execute(
-      { parts: [{ title: '甲', origin: '03', files: ['a.js'], evidence: 'test' }] },
+      { parts: [{ title: '甲', origin: '03', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] },
       { agent: {} },
     )
 
     await assert.rejects(
       () =>
         plan.execute(
-          { parts: [{ title: '乙', origin: '99', files: ['b.js'], evidence: 'test' }] },
+          { parts: [{ title: '乙', origin: '99', files: ['b.js'], evidence: 'test', covers: ['AC-1'] }] },
           { agent: {} },
         ),
       /99/,
@@ -170,7 +170,7 @@ test('多个项目时用 @项目名 指定，驳回不会因为「有多个项�
     for (const name of ['one', 'two']) {
       await start.execute({ name, goal: '做点事', acceptance: judged(['一条']) }, { agent: {} })
       await plan.execute(
-        { project: name, parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] },
+        { project: name, parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] },
         { agent: {} },
       )
     }

@@ -27,8 +27,8 @@ function scenario(responses = [DONE_REPORT]) {
   state.startProject({ name: 'demo', goal: '把登录流程做出来', acceptance: judged(['能登录']) })
   state.submitPlan({
     parts: [
-      { title: '做登录页', files: ['src/login.js'], evidence: 'test' },
-      { title: '接后端', dependsOn: ['P1'], files: ['src/api.js'], evidence: 'test' },
+      { title: '做登录页', files: ['src/login.js'], evidence: 'test', covers: ['AC-1'] },
+      { title: '接后端', dependsOn: ['P1'], files: ['src/api.js'], evidence: 'test', covers: ['AC-1'] },
     ],
   })
   state.approvePlan({ by: 'user' })
@@ -238,7 +238,7 @@ test('有部分处于阻塞时不能改计划 —— 改计划不能替用户裁
   await state.dispatchNext()
   state.verifyPart({ part: 'P1', verdict: 'fail', reason: '同一个原因' })
 
-  const result = state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
+  const result = state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
 
   assert.equal(result.ok, false)
   assert.match(result.problem, /阻塞/)

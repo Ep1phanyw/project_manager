@@ -110,7 +110,7 @@ test('派分时把越界改动记进记录', async () => {
   })
 
   state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
-  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
+  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   state.approvePlan({ by: 'user' })
 
   const result = await state.dispatchNext()
@@ -136,7 +136,7 @@ test('越界检查自己抛错时不影响派分', async () => {
   })
 
   state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
-  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
+  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   state.approvePlan({ by: 'user' })
 
   const result = await state.dispatchNext()

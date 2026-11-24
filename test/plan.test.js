@@ -17,8 +17,8 @@ function withProject(store = memoryStore()) {
 }
 
 const TWO_PARTS = [
-  { title: '做登录页', files: ['src/login.js'], evidence: 'test' },
-  { title: '接后端', dependsOn: ['P1'], files: ['src/api.js'], evidence: 'build' },
+  { title: '做登录页', files: ['src/login.js'], evidence: 'test', covers: ['AC-1'] },
+  { title: '接后端', dependsOn: ['P1'], files: ['src/api.js'], evidence: 'build', covers: ['AC-1'] },
 ]
 
 test('合法计划落盘，并在 status 里看得到每个部分', () => {
@@ -37,6 +37,7 @@ test('合法计划落盘，并在 status 里看得到每个部分', () => {
     dependsOn: [],
     files: ['src/login.js'],
     evidence: 'test',
+    covers: ['AC-1'],
   })
   assert.deepEqual(project.parts[1].dependsOn, ['P1'])
   assert.equal(project.parts[1].evidence, 'build')
@@ -61,6 +62,7 @@ test('计划写入文件后，换一个全新实例仍能读回 —— 依赖与
         dependsOn: [],
         files: ['src/login.js'],
         evidence: 'test',
+        covers: ['AC-1'],
       },
       {
         id: 'P2',
@@ -69,6 +71,7 @@ test('计划写入文件后，换一个全新实例仍能读回 —— 依赖与
         dependsOn: ['P1'],
         files: ['src/api.js'],
         evidence: 'build',
+        covers: ['AC-1'],
       },
     ])
   } finally {
@@ -81,8 +84,8 @@ test('依赖指向不存在的部分时被拒，并指出是哪一条', () => {
 
   const result = state.submitPlan({
     parts: [
-      { title: '做登录页', files: ['src/login.js'], evidence: 'test' },
-      { title: '接后端', dependsOn: ['P9'], files: ['src/api.js'], evidence: 'build' },
+      { title: '做登录页', files: ['src/login.js'], evidence: 'test', covers: ['AC-1'] },
+      { title: '接后端', dependsOn: ['P9'], files: ['src/api.js'], evidence: 'build', covers: ['AC-1'] },
     ],
   })
 
@@ -96,8 +99,8 @@ test('依赖成环时被拒，并指出环上的部分', () => {
 
   const result = state.submitPlan({
     parts: [
-      { title: '甲', dependsOn: ['P2'], files: ['a.js'], evidence: 'test' },
-      { title: '乙', dependsOn: ['P1'], files: ['b.js'], evidence: 'test' },
+      { title: '甲', dependsOn: ['P2'], files: ['a.js'], evidence: 'test', covers: ['AC-1'] },
+      { title: '乙', dependsOn: ['P1'], files: ['b.js'], evidence: 'test', covers: ['AC-1'] },
     ],
   })
 
@@ -112,8 +115,8 @@ test('文件集重叠却没有先后关系时被拒，并指出是哪两个部�
 
   const result = state.submitPlan({
     parts: [
-      { title: '甲', files: ['src/login.js'], evidence: 'test' },
-      { title: '乙', files: ['src/login.js'], evidence: 'test' },
+      { title: '甲', files: ['src/login.js'], evidence: 'test', covers: ['AC-1'] },
+      { title: '乙', files: ['src/login.js'], evidence: 'test', covers: ['AC-1'] },
     ],
   })
 
@@ -128,8 +131,8 @@ test('文件集重叠但有先后关系时放行', () => {
 
   const result = state.submitPlan({
     parts: [
-      { title: '甲', files: ['src/login.js'], evidence: 'test' },
-      { title: '乙', dependsOn: ['P1'], files: ['src/login.js'], evidence: 'test' },
+      { title: '甲', files: ['src/login.js'], evidence: 'test', covers: ['AC-1'] },
+      { title: '乙', dependsOn: ['P1'], files: ['src/login.js'], evidence: 'test', covers: ['AC-1'] },
     ],
   })
 
@@ -141,9 +144,9 @@ test('间接的先后关系也算数：P1 → P2 → P3 时 P1 与 P3 不算冲�
 
   const result = state.submitPlan({
     parts: [
-      { title: '一', files: ['src/login.js'], evidence: 'test' },
-      { title: '二', dependsOn: ['P1'], files: ['src/middle.js'], evidence: 'test' },
-      { title: '三', dependsOn: ['P2'], files: ['src/login.js'], evidence: 'test' },
+      { title: '一', files: ['src/login.js'], evidence: 'test', covers: ['AC-1'] },
+      { title: '二', dependsOn: ['P1'], files: ['src/middle.js'], evidence: 'test', covers: ['AC-1'] },
+      { title: '三', dependsOn: ['P2'], files: ['src/login.js'], evidence: 'test', covers: ['AC-1'] },
     ],
   })
 
@@ -155,8 +158,8 @@ test('文件路径写成 ./src/x.js 与 src/x.js 视为同一个文件', () => {
 
   const result = state.submitPlan({
     parts: [
-      { title: '甲', files: ['src/login.js'], evidence: 'test' },
-      { title: '乙', files: ['./src/login.js'], evidence: 'test' },
+      { title: '甲', files: ['src/login.js'], evidence: 'test', covers: ['AC-1'] },
+      { title: '乙', files: ['./src/login.js'], evidence: 'test', covers: ['AC-1'] },
     ],
   })
 
@@ -182,13 +185,13 @@ test('部分缺文件集或标题时被拒', () => {
   const { state } = withProject()
 
   const noFiles = state.submitPlan({
-    parts: [{ title: '甲', files: [], evidence: 'test' }],
+    parts: [{ title: '甲', files: [], evidence: 'test', covers: ['AC-1'] }],
   })
   assert.equal(noFiles.ok, false)
   assert.match(noFiles.problem, /文件/)
 
   const noTitle = state.submitPlan({
-    parts: [{ title: '  ', files: ['a.js'], evidence: 'test' }],
+    parts: [{ title: '  ', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }],
   })
   assert.equal(noTitle.ok, false)
   assert.match(noTitle.problem, /标题|名字/)
@@ -227,13 +230,13 @@ test('部分可以声明自己的来源，来源文件不存在时被拒', () =>
   state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
 
   const ok = state.submitPlan({
-    parts: [{ title: '甲', origin: '03', files: ['a.js'], evidence: 'test' }],
+    parts: [{ title: '甲', origin: '03', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }],
   })
   assert.equal(ok.ok, true)
   assert.equal(state.status().project.parts[0].origin, '03')
 
   const bad = state.submitPlan({
-    parts: [{ title: '乙', origin: '99', files: ['b.js'], evidence: 'test' }],
+    parts: [{ title: '乙', origin: '99', files: ['b.js'], evidence: 'test', covers: ['AC-1'] }],
   })
   assert.equal(bad.ok, false)
   assert.match(bad.problem, /99/)
@@ -259,7 +262,7 @@ test('部分标题带换行时拒绝 —— 否则计划文件会被写坏且再
   const { store, state } = withProject()
 
   const result = state.submitPlan({
-    parts: [{ title: '做登录\n页', files: ['a.js'], evidence: 'test' }],
+    parts: [{ title: '做登录\n页', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }],
   })
 
   assert.equal(result.ok, false)
@@ -271,7 +274,7 @@ test('文件路径里带逗号也能原样读回 —— 不靠分隔符拆分', 
   const { state } = withProject()
   const files = ['src/a,b.js', 'src/ c.js ']
 
-  state.submitPlan({ parts: [{ title: '甲', files, evidence: 'test' }] })
+  state.submitPlan({ parts: [{ title: '甲', files, evidence: 'test', covers: ['AC-1'] }] })
 
   const { project } = state.status()
   assert.deepEqual(project.parts[0].files, ['src/a,b.js', 'src/ c.js'])
@@ -282,8 +285,8 @@ test('部分编号可以自己指定，依赖按编号对得上', () => {
 
   const result = state.submitPlan({
     parts: [
-      { id: 'P7', title: '甲', files: ['a.js'], evidence: 'test' },
-      { id: 'P8', title: '乙', dependsOn: ['P7'], files: ['b.js'], evidence: 'test' },
+      { id: 'P7', title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] },
+      { id: 'P8', title: '乙', dependsOn: ['P7'], files: ['b.js'], evidence: 'test', covers: ['AC-1'] },
     ],
   })
 
@@ -300,7 +303,7 @@ test('自己依赖自己被判成环', () => {
   const { state } = withProject()
 
   const result = state.submitPlan({
-    parts: [{ id: 'P1', title: '甲', dependsOn: ['P1'], files: ['a.js'], evidence: 'test' }],
+    parts: [{ id: 'P1', title: '甲', dependsOn: ['P1'], files: ['a.js'], evidence: 'test', covers: ['AC-1'] }],
   })
 
   assert.equal(result.ok, false)
@@ -336,8 +339,8 @@ test('目录与它下面的文件算同一片地方，没有先后关系就拒',
 
   const result = state.submitPlan({
     parts: [
-      { title: '甲', files: ['src/auth/'], evidence: 'test' },
-      { title: '乙', files: ['src/auth/login.js'], evidence: 'test' },
+      { title: '甲', files: ['src/auth/'], evidence: 'test', covers: ['AC-1'] },
+      { title: '乙', files: ['src/auth/login.js'], evidence: 'test', covers: ['AC-1'] },
     ],
   })
 
@@ -350,8 +353,8 @@ test('目录重叠加了依赖就放行', () => {
 
   const result = state.submitPlan({
     parts: [
-      { title: '甲', files: ['src/auth'], evidence: 'test' },
-      { title: '乙', dependsOn: ['P1'], files: ['src/auth/login.js'], evidence: 'test' },
+      { title: '甲', files: ['src/auth'], evidence: 'test', covers: ['AC-1'] },
+      { title: '乙', dependsOn: ['P1'], files: ['src/auth/login.js'], evidence: 'test', covers: ['AC-1'] },
     ],
   })
 

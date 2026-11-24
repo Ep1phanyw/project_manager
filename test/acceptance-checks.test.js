@@ -87,7 +87,7 @@ test('改掉某条标准的检查就改了标准本身：批准之后被挡，�
   const state = machine(store)
   start(state, [COMMAND])
 
-  state.submitPlan({ parts: [{ title: '做登录页', files: ['src/login.js'], evidence: 'test' }] })
+  state.submitPlan({ parts: [{ title: '做登录页', files: ['src/login.js'], evidence: 'test', covers: ['AC-1'] }] })
   state.approvePlan({ by: 'user' })
 
   // 只把检查命令换掉，标准的文字没动。
@@ -113,7 +113,11 @@ test('文件里重排标准不改变身份，也不改变指纹', () => {
   const state = machine(store)
   start(state, [COMMAND, JUDGED])
 
-  state.submitPlan({ parts: [{ title: '做登录页', files: ['src/login.js'], evidence: 'test' }] })
+  state.submitPlan({
+    parts: [
+      { title: '做登录页', files: ['src/login.js'], evidence: 'test', covers: ['AC-1', 'AC-2'] },
+    ],
+  })
   state.approvePlan({ by: 'user' })
 
   // 用户把两条标准换了个位置：编号跟着走，标准本身没变。
@@ -221,14 +225,19 @@ test('批准路径同样会给删掉的编号登记退役，之后不能拿它�
   const state = machine(store)
   start(state, [COMMAND, JUDGED])
 
-  state.submitPlan({ parts: [{ title: '做登录页', files: ['src/login.js'], evidence: 'test' }] })
-  state.approvePlan({ by: 'user' })
+  const submitted = state.submitPlan({
+    parts: [
+      { title: '做登录页', files: ['src/login.js'], evidence: 'test', covers: ['AC-1', 'AC-2'] },
+    ],
+  })
+  assert.equal(submitted.ok, true)
+  assert.equal(state.approvePlan({ by: 'user' }).ok, true)
 
   // 批准之后用户删掉 AC-2，改完计划再重新批准 —— 这条路径也要登记退役。
   store.write('demo', {
     acceptance: '# 验收标准\n\n## [AC-1] 测试全绿\n\n- 检查：命令 node --test\n- 期望退出码：0\n',
   })
-  state.submitPlan({ parts: [{ title: '做登录页', files: ['src/login.js'], evidence: 'test' }] })
+  state.submitPlan({ parts: [{ title: '做登录页', files: ['src/login.js'], evidence: 'test', covers: ['AC-1'] }] })
   assert.equal(state.approvePlan({ by: 'user' }).ok, true)
 
   // 现在把一条全新标准塞进 AC-2：它已经退役，必须被拒。

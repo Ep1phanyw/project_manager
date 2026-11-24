@@ -6,6 +6,7 @@
  */
 
 import './acceptance-checks.test.js'
+import './coverage.test.js'
 import './registration.test.js'
 import './project-state.test.js'
 import './plan.test.js'

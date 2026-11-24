@@ -32,7 +32,7 @@ function setup() {
 
 function approved(store) {
   const state = createProjectState({ store, now: () => Date.parse(AT) })
-  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
+  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   state.approvePlan({ by: 'user' })
   return state
 }
@@ -41,7 +41,7 @@ test('文件集写成「无」会被拒 —— 否则写出的计划永远读不
   const { state } = setup()
 
   const result = state.submitPlan({
-    parts: [{ title: '甲', files: ['无'], evidence: 'test' }],
+    parts: [{ title: '甲', files: ['无'], evidence: 'test', covers: ['AC-1'] }],
   })
 
   assert.equal(result.ok, false)
@@ -52,7 +52,7 @@ test('依赖写成「无」会被拒', () => {
   const { state } = setup()
 
   const result = state.submitPlan({
-    parts: [{ title: '甲', dependsOn: ['无'], files: ['a.js'], evidence: 'test' }],
+    parts: [{ title: '甲', dependsOn: ['无'], files: ['a.js'], evidence: 'test', covers: ['AC-1'] }],
   })
 
   assert.equal(result.ok, false)
@@ -114,7 +114,7 @@ test('已经用户确认的部分不能再被报阻塞', async () => {
     runChild: async () => ({ ok: true, report: WAITING }),
   })
   state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
-  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
+  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   state.approvePlan({ by: 'user' })
   await state.dispatchNext()
   state.confirmPart({ by: 'user' })
@@ -133,7 +133,7 @@ test('验收通过后仍然不能再报阻塞 —— 老用例不许回退', asy
     runChild: async () => ({ ok: true, report: DONE }),
   })
   state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
-  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
+  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   state.approvePlan({ by: 'user' })
   await state.dispatchNext()
   state.verifyPart({ part: 'P1', verdict: 'pass', reason: '看过了' })

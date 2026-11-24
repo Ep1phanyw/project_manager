@@ -31,7 +31,7 @@ async function verifiedProject(store, extra = {}) {
     acceptance: judged(['一条']),
     verify: extra.verifyCommand,
   })
-  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
+  state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   state.approvePlan({ by: 'user' })
   await state.dispatchNext()
   state.verifyPart({ part: 'P1', verdict: 'pass', reason: '对上' })
