@@ -8,6 +8,7 @@
 import './acceptance-checks.test.js'
 import './coverage.test.js'
 import './retry-feedback.test.js'
+import './final-acceptance.test.js'
 import './registration.test.js'
 import './project-state.test.js'
 import './plan.test.js'

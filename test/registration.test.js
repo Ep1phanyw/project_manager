@@ -99,6 +99,10 @@ test('/manager approve 走用户路径，批准后阶段变成执行', async () 
     const approved = await commands[0].handler({ rawInput: 'approve', agent: {} })
     assert.equal(approved.kind, 'success')
     assert.match((await commands[0].handler({ rawInput: '', agent: {} })).text, /执行/)
+
+    // 没配整体检查时，自检要说一句「收尾少一层」。
+    const doctor = await commands[0].handler({ rawInput: 'doctor', agent: {} })
+    assert.match(doctor.text, /收尾少一层/)
   } finally {
     workspace.cleanup()
   }
@@ -241,8 +245,7 @@ test('技能注册抛错不会把整个插件拖下水', () => {
   }
 })
 
-test('/manager doctor 在没有项目时也能跑，并报出能力与结论', async () => {
-  const workspace = emptyWorkspace()
+test('/manager doctor 在没有项目时也能跑，并报出能力与结论', async () => {  const workspace = emptyWorkspace()
   try {
     const { commands } = install(workspace.dir)
 

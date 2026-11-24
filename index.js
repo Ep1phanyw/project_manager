@@ -474,7 +474,20 @@ export function apply(ctx, config) {
 
           // 自检要在「没有项目」时也能跑，所以放在解析项目之前。
           if (keyword === DOCTOR_KEYWORD) {
-            return { kind: 'success', text: await doctorReport(ctx, invocation.agent) }
+            const report = await doctorReport(ctx, invocation.agent)
+
+            // 收尾少一层的时候要说一声：没配整体检查，收尾只能看逐条标准的结果。
+            let hint = ''
+            try {
+              const status = (await stateFor(invocation.agent)).status()
+              if (status.ok && !status.project.verify) {
+                hint = '\n\n收尾少一层：这个项目没配整体检查，收尾验收只能看逐条标准的结果。'
+              }
+            } catch {
+              hint = ''
+            }
+
+            return { kind: 'success', text: report + hint }
           }
 
           const state = await stateFor(invocation.agent)
