@@ -7,6 +7,7 @@ import assert from 'node:assert/strict'
 
 import { createProjectState } from '../lib/project-state.js'
 import { memoryStore } from './memory-store.js'
+import { judged } from './fixtures.js'
 
 const AT = '2026-11-23T00:00:00.000Z'
 
@@ -27,7 +28,7 @@ async function verifiedProject(store, extra = {}) {
   state.startProject({
     name: 'demo',
     goal: '做点事',
-    acceptance: ['一条'],
+    acceptance: judged(['一条']),
     verify: extra.verifyCommand,
   })
   state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
@@ -113,7 +114,7 @@ test('核对命令带换行会被拒 —— 否则状态文件会被写坏', () 
   const result = state.startProject({
     name: 'demo',
     goal: '做点事',
-    acceptance: ['一条'],
+    acceptance: judged(['一条']),
     verify: 'node a.js\nnode b.js',
   })
 

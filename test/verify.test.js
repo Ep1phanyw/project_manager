@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import { createProjectState } from '../lib/project-state.js'
 import { memoryStore } from './memory-store.js'
+import { judged } from './fixtures.js'
 
 const AT = '2026-11-23T06:00:00.000Z'
 
@@ -18,7 +19,7 @@ function scenario(responses = [DONE_REPORT]) {
     now: () => Date.parse(AT),
     runChild: async () => responses.shift() ?? DONE_REPORT,
   })
-  state.startProject({ name: 'demo', goal: '把登录流程做出来', acceptance: ['能登录'] })
+  state.startProject({ name: 'demo', goal: '把登录流程做出来', acceptance: judged(['能登录']) })
   state.submitPlan({
     parts: [
       { title: '做登录页', files: ['src/login.js'], evidence: 'test' },

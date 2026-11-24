@@ -183,8 +183,36 @@ export function apply(ctx, config) {
         goal: { type: 'string', description: '这个项目要达到什么，一段话' },
         acceptance: {
           type: 'array',
-          items: { type: 'string' },
-          description: '逐条可核对的验收标准；「做好了」不算，每条都要能产出证据',
+          items: {
+            type: 'object',
+            properties: {
+              text: { type: 'string', description: '这条验收标准说什么' },
+              check: {
+                type: 'object',
+                properties: {
+                  kind: {
+                    type: 'string',
+                    enum: ['command', 'artifact', 'judgement'],
+                    description: '命令检查、产物检查，或只能由人判断',
+                  },
+                  command: { type: 'string', description: 'kind=command：要执行的命令' },
+                  expectExit: {
+                    type: 'integer',
+                    description: 'kind=command：期望的退出码，省略为 0',
+                  },
+                  output: { type: 'string', description: 'kind=command：可选的输出正则' },
+                  path: { type: 'string', description: 'kind=artifact：要检查的文件' },
+                  match: { type: 'string', description: 'kind=artifact：可选的内容正则' },
+                },
+                required: ['kind'],
+                additionalProperties: false,
+              },
+            },
+            required: ['text', 'check'],
+            additionalProperties: false,
+          },
+          description:
+            '逐条可核对的验收标准：每条都要说明怎么核对 —— 一条命令、一条产物断言，或者标成判断型',
         },
         verify: {
           type: 'string',

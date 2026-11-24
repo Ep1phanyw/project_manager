@@ -4,13 +4,14 @@ import assert from 'node:assert/strict'
 import { formatStatus } from '../lib/format.js'
 import { createProjectState } from '../lib/project-state.js'
 import { memoryStore } from './memory-store.js'
+import { judged } from './fixtures.js'
 
 const AT = '2026-11-23T06:00:00.000Z'
 
 function withPlan() {
   const store = memoryStore()
   const state = createProjectState({ store, now: () => Date.parse(AT) })
-  state.startProject({ name: 'demo', goal: '把登录流程做出来', acceptance: ['能登录'] })
+  state.startProject({ name: 'demo', goal: '把登录流程做出来', acceptance: judged(['能登录']) })
   state.submitPlan({
     parts: [
       { title: '做登录页', files: ['src/login.js'], evidence: 'test' },
@@ -39,7 +40,7 @@ test('还没批准时取下一个部分会被挡住', () => {
 
 test('还没计划时不能批准', () => {
   const state = createProjectState({ store: memoryStore(), now: () => Date.parse(AT) })
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
 
   const result = state.approvePlan({ by: 'user' })
 
@@ -88,7 +89,7 @@ test('批准会在状态里留痕：记下是谁、什么时候', () => {
 test('批准记录会写进项目状态，换个实例仍能看到', () => {
   const workspace = memoryStore()
   const first = createProjectState({ store: workspace, now: () => Date.parse(AT) })
-  first.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  first.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
   first.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
   first.approvePlan({ by: 'user' })
 
@@ -235,7 +236,7 @@ test('计划里有部分带来源时，批准不会炸', () => {
   const store = memoryStore()
   const state = createProjectState({ store, now: () => Date.parse(AT), hasOrigin: () => true })
 
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
   state.submitPlan({
     parts: [{ title: '甲', origin: '03', files: ['a.js'], evidence: 'test' }],
   })
@@ -249,7 +250,7 @@ test('计划里有部分带来源时，批准不会炸', () => {
 test('有依赖的部分先不派，先挑没有依赖的那个', () => {
   const store = memoryStore()
   const state = createProjectState({ store, now: () => Date.parse(AT) })
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
   state.submitPlan({
     parts: [{ title: '甲', dependsOn: ['P2'], files: ['a.js'], evidence: 'test' },
             { title: '乙', files: ['b.js'], evidence: 'test' }],

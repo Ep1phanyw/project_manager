@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import { createProjectState } from '../lib/project-state.js'
 import { formatBlockReport } from '../lib/format.js'
 import { memoryStore } from './memory-store.js'
+import { judged } from './fixtures.js'
 
 const AT = '2026-11-23T06:00:00.000Z'
 
@@ -23,7 +24,7 @@ function scenario(responses = [DONE_REPORT]) {
     now: () => Date.parse(AT),
     runChild: async () => responses.shift() ?? DONE_REPORT,
   })
-  state.startProject({ name: 'demo', goal: '把登录流程做出来', acceptance: ['能登录'] })
+  state.startProject({ name: 'demo', goal: '把登录流程做出来', acceptance: judged(['能登录']) })
   state.submitPlan({
     parts: [
       { title: '做登录页', files: ['src/login.js'], evidence: 'test' },
@@ -247,7 +248,8 @@ test('批准之后手改验收标准会被发现，必须先重新批准', () =>
   const { store, state } = scenario()
 
   store.write('demo', {
-    acceptance: '# 验收标准\n\n- [AC-1] 能登录\n- [AC-2] 悄悄加一条\n',
+    acceptance:
+      '# 验收标准\n\n## [AC-1] 能登录\n\n- 检查：判断型\n\n## [AC-2] 悄悄加一条\n\n- 检查：判断型\n',
   })
 
   const next = state.nextPart()

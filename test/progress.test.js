@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import { formatStatus } from '../lib/format.js'
 import { createProjectState } from '../lib/project-state.js'
 import { memoryStore } from './memory-store.js'
+import { judged } from './fixtures.js'
 
 const AT = '2026-11-23T06:00:00.000Z'
 
@@ -23,7 +24,7 @@ function scenario(responses = [DONE, DONE]) {
     now: () => Date.parse(AT),
     runChild: async () => responses.shift() ?? DONE,
   })
-  state.startProject({ name: 'demo', goal: '把登录流程做出来', acceptance: ['能登录'] })
+  state.startProject({ name: 'demo', goal: '把登录流程做出来', acceptance: judged(['能登录']) })
   state.submitPlan({
     parts: [
       { title: '做登录页', files: ['src/login.js'], evidence: 'test' },
@@ -116,7 +117,7 @@ test('还有部分没过时，不许做收尾验收', async () => {
 test('完成的项目重开后仍显示完成', async () => {
   const store = memoryStore()
   const first = createProjectState({ store, now: () => Date.parse(AT), runChild: async () => DONE })
-  first.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  first.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
   first.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
   first.approvePlan({ by: 'user' })
   await first.dispatchNext()
@@ -146,7 +147,7 @@ test('状态里能看到每个部分的重试次数', async () => {
 test('阻塞的项目重开后仍显示同一个阻塞原因', async () => {
   const store = memoryStore()
   const first = createProjectState({ store, now: () => Date.parse(AT), runChild: async () => DONE })
-  first.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  first.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
   first.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
   first.approvePlan({ by: 'user' })
   await first.dispatchNext()
@@ -210,7 +211,7 @@ test('没有阻塞时不能恢复', () => {
 test('重开后能接着跑，不需要重新批准计划', async () => {
   const store = memoryStore()
   const first = createProjectState({ store, now: () => Date.parse(AT), runChild: async () => DONE })
-  first.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  first.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
   first.submitPlan({
     parts: [
       { title: '甲', files: ['a.js'], evidence: 'test' },

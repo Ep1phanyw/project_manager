@@ -7,6 +7,7 @@ import assert from 'node:assert/strict'
 
 import { createProjectState } from '../lib/project-state.js'
 import { memoryStore } from './memory-store.js'
+import { judged } from './fixtures.js'
 
 const AT = '2026-11-23T00:00:00.000Z'
 
@@ -23,7 +24,7 @@ function stateOn(store) {
 /** 跑完 P1，让它带着一条验收通过记录。 */
 async function finishP1(store) {
   let state = stateOn(store)
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
   state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
   state.approvePlan({ by: 'user' })
 
@@ -71,7 +72,7 @@ test('改了某个部分的定义，只有它的记录被丢掉', async () => {
 test('文件和依赖的顺序不同不算改定义', async () => {
   const store = memoryStore()
   const state = stateOn(store)
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
   state.submitPlan({
     parts: [
       { id: 'P1', title: '甲', files: ['a.js', 'b.js'], evidence: 'test' },
@@ -97,7 +98,7 @@ test('文件和依赖的顺序不同不算改定义', async () => {
 test('把阻塞的部分从计划里删掉是被允许的', async () => {
   const store = memoryStore()
   const state = stateOn(store)
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
   state.submitPlan({
     parts: [
       { id: 'P1', title: '甲', files: ['a.js'], evidence: 'test' },
@@ -115,7 +116,7 @@ test('把阻塞的部分从计划里删掉是被允许的', async () => {
 test('还在阻塞的部分留着，就不许改计划', () => {
   const store = memoryStore()
   const state = stateOn(store)
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
   state.submitPlan({ parts: [{ id: 'P1', title: '甲', files: ['a.js'], evidence: 'test' }] })
   state.approvePlan({ by: 'user' })
   state.requestBlock({ part: 'P1', condition: 'missing-user-input', detail: '缺东西' })
@@ -138,7 +139,7 @@ test('验收通过时会打快照，失败不会', async () => {
       return { ok: true }
     },
   })
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
   state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
   state.approvePlan({ by: 'user' })
   await state.dispatchNext()
@@ -156,7 +157,7 @@ test('验收通过时会打快照，失败不会', async () => {
 test('放弃项目要写理由，且只有用户能放弃', () => {
   const store = memoryStore()
   const state = stateOn(store)
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
 
   assert.equal(state.abandonProject({ by: 'model', reason: '不想做了' }).ok, false)
   assert.match(state.abandonProject({ by: 'model', reason: '不想做了' }).problem, /只有用户/)
@@ -171,7 +172,7 @@ test('放弃项目要写理由，且只有用户能放弃', () => {
 test('放弃之后别的操作全停手，但状态还看得见', () => {
   const store = memoryStore()
   const state = stateOn(store)
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
   state.abandonProject({ by: 'user', reason: '方向变了' })
 
   const status = state.status()
@@ -189,12 +190,12 @@ test('放弃之后别的操作全停手，但状态还看得见', () => {
 test('改完验收标准后用 reopenCriteria 重新纳入流程，强制重新批准', () => {
   const store = memoryStore()
   const state = stateOn(store)
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
   state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
   state.approvePlan({ by: 'user' })
 
   // 用户手改验收标准：指纹对不上，派分被挡住
-  store.write('demo', { acceptance: '# 验收标准\n\n- [AC-1] 一条改过了\n' })
+  store.write('demo', { acceptance: '# 验收标准\n\n## [AC-1] 一条改过了\n\n- 检查：判断型\n' })
 
   const blocked = stateOn(store).nextPart()
   assert.equal(blocked.ok, false)
@@ -214,7 +215,7 @@ test('改完验收标准后用 reopenCriteria 重新纳入流程，强制重新�
 test('reopenCriteria 只认用户', () => {
   const store = memoryStore()
   const state = stateOn(store)
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
 
   const result = state.reopenCriteria({ by: 'model' })
 
@@ -232,7 +233,7 @@ test('快照自己抛错不影响验收', async () => {
       throw new Error('git 不在')
     },
   })
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
   state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
   state.approvePlan({ by: 'user' })
   await state.dispatchNext()

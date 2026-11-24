@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { apply } from '../index.js'
+import { judged } from './fixtures.js'
 
 /**
  * 接线检查：装一次插件，确认命令与工具真的登记、卸载时真的移除。
@@ -85,7 +86,7 @@ test('/manager approve 走用户路径，批准后阶段变成执行', async () 
     const plan = tools.find((tool) => tool.name === 'manager_plan')
 
     await start.execute(
-      { name: 'demo', goal: '做点事', acceptance: ['一条'] },
+      { name: 'demo', goal: '做点事', acceptance: judged(['一条']) },
       { agent: {} },
     )
     await plan.execute(
@@ -109,7 +110,7 @@ test('/manager reject 驳回后回到规划，并记下理由', async () => {
     const { tools, commands } = install(workspace.dir)
     await tools
       .find((tool) => tool.name === 'manager_start')
-      .execute({ name: 'demo', goal: '做点事', acceptance: ['一条'] }, { agent: {} })
+      .execute({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) }, { agent: {} })
     await tools
       .find((tool) => tool.name === 'manager_plan')
       .execute({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] }, { agent: {} })
@@ -136,7 +137,7 @@ test('计划里的来源必须真的存在，写错编号会被拒', async () =>
     const start = tools.find((tool) => tool.name === 'manager_start')
     const plan = tools.find((tool) => tool.name === 'manager_plan')
 
-    await start.execute({ name: 'demo', goal: '做点事', acceptance: ['一条'] }, { agent: {} })
+    await start.execute({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) }, { agent: {} })
 
     mkdirSync(join(workspace.dir, '.scratch', 'demo', 'issues'), { recursive: true })
     writeFileSync(join(workspace.dir, '.scratch', 'demo', 'issues', '03-do-thing.md'), '# 03\n')
@@ -167,7 +168,7 @@ test('多个项目时用 @项目名 指定，驳回不会因为「有多个项�
     const plan = tools.find((tool) => tool.name === 'manager_plan')
 
     for (const name of ['one', 'two']) {
-      await start.execute({ name, goal: '做点事', acceptance: ['一条'] }, { agent: {} })
+      await start.execute({ name, goal: '做点事', acceptance: judged(['一条']) }, { agent: {} })
       await plan.execute(
         { project: name, parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] },
         { agent: {} },
@@ -189,7 +190,7 @@ test('查询阻塞报告时「没有阻塞」是正常结果，不是错误', as
     const start = tools.find((tool) => tool.name === 'manager_start')
     const block = tools.find((tool) => tool.name === 'manager_block')
 
-    await start.execute({ name: 'demo', goal: '做点事', acceptance: ['一条'] }, { agent: {} })
+    await start.execute({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) }, { agent: {} })
 
     const result = await block.execute({ project: 'demo' }, { agent: {} })
 

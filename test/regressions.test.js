@@ -7,6 +7,7 @@ import assert from 'node:assert/strict'
 
 import { createProjectState } from '../lib/project-state.js'
 import { memoryStore } from './memory-store.js'
+import { judged } from './fixtures.js'
 
 const AT = '2026-11-23T00:00:00.000Z'
 
@@ -25,7 +26,7 @@ const WAITING = {
 function setup() {
   const store = memoryStore()
   const state = createProjectState({ store, now: () => Date.parse(AT) })
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
   return { store, state }
 }
 
@@ -89,7 +90,7 @@ test('在等用户确认的部分不能被报阻塞 —— 那是用户的裁决
     now: () => Date.parse(AT),
     runChild: async () => ({ ok: true, report: WAITING }),
   })
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
   state = approved(store)
   state = createProjectState({
     store,
@@ -112,7 +113,7 @@ test('已经用户确认的部分不能再被报阻塞', async () => {
     now: () => Date.parse(AT),
     runChild: async () => ({ ok: true, report: WAITING }),
   })
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
   state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
   state.approvePlan({ by: 'user' })
   await state.dispatchNext()
@@ -131,7 +132,7 @@ test('验收通过后仍然不能再报阻塞 —— 老用例不许回退', asy
     now: () => Date.parse(AT),
     runChild: async () => ({ ok: true, report: DONE }),
   })
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: ['一条'] })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
   state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test' }] })
   state.approvePlan({ by: 'user' })
   await state.dispatchNext()

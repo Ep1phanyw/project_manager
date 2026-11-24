@@ -5,6 +5,7 @@
  * 也不需要 `node --test`（它会为每个文件 spawn 一个子进程）。
  */
 
+import './acceptance-checks.test.js'
 import './registration.test.js'
 import './project-state.test.js'
 import './plan.test.js'
