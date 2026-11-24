@@ -66,12 +66,31 @@ test('报告里逐项列出能力，缺的标出来并给结论', () => {
 
   assert.match(text, /DSH 版本：0\.2\.3-alpha\.2/)
   assert.match(text, /范围判断：在范围内/)
+  assert.match(text, /已验证清单：.*当前版本在清单里/)
   assert.match(text, /在  commands\.register/)
   assert.match(text, /缺  subagents\.startActivation　—— 服务不在/)
   assert.match(text, /git：可用/)
   assert.match(text, /别名 1 个/)
   assert.match(text, /被本机同名技能盖住：grill-with-docs/)
-  assert.match(text, /结论：缺 1 项能力/)
+  assert.match(text, /结论：缺子对话能力/)
+  assert.match(text, /本环境跑不了项目/)
+})
+
+test('没验证过的版本如实说：按能力探测跑', () => {
+  const text = formatDoctorReport({
+    version: '0.3.0',
+    expected: '>=0.2.3-alpha.2 <0.4.0',
+    workspace: 'D:\\demo',
+    projects: [],
+    capabilities: [{ name: 'subagents.startActivation', ok: true }],
+    config: { snapshot: 'off', evidenceTypes: ['test'] },
+    git: { ok: false, note: '找不到 git' },
+    skills: { original: [], alias: [], shadowed: [] },
+  })
+
+  assert.match(text, /范围判断：在范围内/)
+  assert.match(text, /当前版本不在清单里：按能力探测运行/)
+  assert.match(text, /结论：能力齐全/)
 })
 
 test('能力齐全时说可以正常用', () => {

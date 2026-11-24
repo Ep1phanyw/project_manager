@@ -204,6 +204,32 @@ test('查询阻塞报告时「没有阻塞」是正常结果，不是错误', as
   }
 })
 
+test('没有子对话能力时：规划照常，派分直接说明跑不了', async () => {
+  const workspace = emptyWorkspace()
+  try {
+    const { tools, commands } = install(workspace.dir)
+    const start = tools.find((tool) => tool.name === 'manager_start')
+    const plan = tools.find((tool) => tool.name === 'manager_plan')
+    const run = tools.find((tool) => tool.name === 'manager_run')
+
+    // install 的假 ctx 没有 subagents：这就是「本环境没有子对话能力」。
+    await start.execute({ name: 'demo', goal: '做点事', acceptance: checked(['一条']) }, { agent: {} })
+    await plan.execute(
+      { parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] },
+      { agent: {} },
+    )
+    await commands[0].handler({ rawInput: 'approve', agent: {} })
+
+    await assert.rejects(() => run.execute({}, { agent: {} }), /子对话能力/)
+
+    // 规划与看状态都还在。
+    const status = await commands[0].handler({ rawInput: '', agent: {} })
+    assert.match(status.text, /demo/)
+  } finally {
+    workspace.cleanup()
+  }
+})
+
 test('技能注册抛错不会把整个插件拖下水', () => {
   const workspace = emptyWorkspace()
   try {

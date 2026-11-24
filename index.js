@@ -23,8 +23,11 @@ import { surveyWorkspace, workspaceContext } from './lib/workspace.js'
 
 export const name = 'project_manager'
 
-/** 三个都是硬依赖：少一个就不该半装好地跑起来。 */
-export const inject = ['commands', 'tools', 'workingDirectory', 'subagents']
+/**
+ * 只有三项是硬依赖：少了它们，插件连存在意义都没有，缺了就不该加载。
+ * 子对话能力是软依赖 —— 不进 inject，运行时探测：缺了还能规划、看状态。
+ */
+export const inject = ['commands', 'tools', 'workingDirectory']
 
 const TOOL_START = 'manager_start'
 const TOOL_PLAN = 'manager_plan'
@@ -124,8 +127,8 @@ export function apply(ctx, config) {
         },
         {
           name: 'subagents.startActivation',
-          ok: typeof ctxRef.subagents?.startActivation === 'function',
-          note: '派分要用',
+          ok: typeof ctxRef.get?.('subagents')?.startActivation === 'function',
+          note: '派分要用；缺了仍能规划与看状态',
         },
         {
           name: 'sessionController.prompt',
@@ -176,7 +179,7 @@ export function apply(ctx, config) {
       maxParallel: readParallelLimit(config),
       capacity: () => {
         try {
-          return ctx.subagents?.capacityOf?.(agent) ?? null
+          return ctx.get?.('subagents')?.capacityOf?.(agent) ?? null
         } catch {
           return null
         }
@@ -636,7 +639,13 @@ function childRunner(ctx, parent, workspace) {
   return async ({ part, prompt, signal }) => {
     if (!parent) return { ok: false, problem: '没有会话上下文，起不了子对话' }
 
-    const activation = await ctx.subagents.startActivation({
+    // 子对话能力是软依赖：运行时探测，缺了就明说，不假装在跑。
+    const subagents = ctx.get?.('subagents')
+    if (typeof subagents?.startActivation !== 'function') {
+      return { ok: false, problem: '本环境没有子对话能力：可以规划与看状态，但派分跑不了' }
+    }
+
+    const activation = await subagents.startActivation({
       provider: 'spawn',
       label: `project_manager ${part.id}`,
       prompt: [{ type: 'text', text: prompt }],
