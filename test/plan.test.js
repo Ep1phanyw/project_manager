@@ -8,11 +8,11 @@ import { formatStatus } from '../lib/format.js'
 import { createProjectState } from '../lib/project-state.js'
 import { createFsStore } from '../lib/store.js'
 import { memoryStore } from './memory-store.js'
-import { judged } from './fixtures.js'
+import { checked } from './fixtures.js'
 
 function withProject(store = memoryStore()) {
-  const state = createProjectState({ store })
-  state.startProject({ name: 'demo', goal: '把登录流程做出来', acceptance: judged(['能登录']) })
+  const state = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }), store })
+  state.startProject({ name: 'demo', goal: '把登录流程做出来', acceptance: checked(['能登录']) })
   return { store, state }
 }
 
@@ -47,11 +47,11 @@ test('计划写入文件后，换一个全新实例仍能读回 —— 依赖与
   const workspace = mkdtempSync(join(tmpdir(), 'project_manager-'))
   try {
     const root = join(workspace, '.scratch')
-    const writer = createProjectState({ store: createFsStore(root) })
-    writer.startProject({ name: 'demo', goal: '把登录流程做出来', acceptance: judged(['能登录']) })
+    const writer = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }), store: createFsStore(root) })
+    writer.startProject({ name: 'demo', goal: '把登录流程做出来', acceptance: checked(['能登录']) })
     writer.submitPlan({ parts: TWO_PARTS })
 
-    const reader = createProjectState({ store: createFsStore(root) })
+    const reader = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }), store: createFsStore(root) })
     const { project } = reader.status()
 
     assert.deepEqual(project.parts, [
@@ -207,7 +207,7 @@ test('空计划被拒', () => {
 })
 
 test('还没有项目时不能提交计划', () => {
-  const state = createProjectState({ store: memoryStore() })
+  const state = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }), store: memoryStore() })
 
   const result = state.submitPlan({ parts: TWO_PARTS })
 
@@ -226,8 +226,8 @@ test('计划被拒时不落盘，原有状态不动', () => {
 
 test('部分可以声明自己的来源，来源文件不存在时被拒', () => {
   const store = memoryStore()
-  const state = createProjectState({ store, hasOrigin: (id) => id === '03' })
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
+  const state = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }), store, hasOrigin: (id) => id === '03' })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: checked(['一条']) })
 
   const ok = state.submitPlan({
     parts: [{ title: '甲', origin: '03', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }],
@@ -312,8 +312,8 @@ test('自己依赖自己被判成环', () => {
 
 test('计划文件被手工改坏时只降级计划，目标与验收标准仍然看得见', () => {
   const store = memoryStore()
-  const state = createProjectState({ store })
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
+  const state = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }), store })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: checked(['一条']) })
   store.write('demo', {
     plan: '# 计划\n\n## [P1] 甲\n\n这不是字段行\n',
   })

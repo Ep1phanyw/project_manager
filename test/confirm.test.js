@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { formatStatus } from '../lib/format.js'
 import { createProjectState } from '../lib/project-state.js'
 import { memoryStore } from './memory-store.js'
-import { judged } from './fixtures.js'
+import { checked } from './fixtures.js'
 
 const AT = '2026-11-23T06:00:00.000Z'
 
@@ -28,12 +28,12 @@ const DONE_REPORT = {
 
 function scenario(responses = [NEEDS_LOOK]) {
   const store = memoryStore()
-  const state = createProjectState({
+  const state = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }),
     store,
     now: () => Date.parse(AT),
     runChild: async () => responses.shift() ?? NEEDS_LOOK,
   })
-  state.startProject({ name: 'demo', goal: '把登录流程做出来', acceptance: judged(['能登录']) })
+  state.startProject({ name: 'demo', goal: '把登录流程做出来', acceptance: checked(['能登录']) })
   state.submitPlan({
     parts: [
       { title: '做登录页', files: ['src/login.js'], evidence: 'test', covers: ['AC-1'] },

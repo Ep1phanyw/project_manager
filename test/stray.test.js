@@ -12,7 +12,7 @@ import { join } from 'node:path'
 import { changedSinceHead, strayChanges } from '../lib/git.js'
 import { createProjectState } from '../lib/project-state.js'
 import { memoryStore } from './memory-store.js'
-import { judged } from './fixtures.js'
+import { checked } from './fixtures.js'
 
 function gitRepo() {
   const dir = mkdtempSync(join(tmpdir(), 'dsh-git-'))
@@ -100,7 +100,7 @@ test('未改动的仓库没有越界', () => {
 
 test('派分时把越界改动记进记录', async () => {
   const store = memoryStore()
-  const state = createProjectState({
+  const state = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }),
     store,
     runChild: async () => ({
       ok: true,
@@ -109,7 +109,7 @@ test('派分时把越界改动记进记录', async () => {
     strayCheck: () => ['b.test.js（改动）'],
   })
 
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: checked(['一条']) })
   state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   state.approvePlan({ by: 'user' })
 
@@ -124,7 +124,7 @@ test('派分时把越界改动记进记录', async () => {
 
 test('越界检查自己抛错时不影响派分', async () => {
   const store = memoryStore()
-  const state = createProjectState({
+  const state = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }),
     store,
     runChild: async () => ({
       ok: true,
@@ -135,7 +135,7 @@ test('越界检查自己抛错时不影响派分', async () => {
     },
   })
 
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: checked(['一条']) })
   state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   state.approvePlan({ by: 'user' })
 

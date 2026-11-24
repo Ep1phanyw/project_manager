@@ -4,12 +4,12 @@ import assert from 'node:assert/strict'
 import { createProjectState } from '../lib/project-state.js'
 import { formatStatus } from '../lib/format.js'
 import { memoryStore } from './memory-store.js'
-import { judged } from './fixtures.js'
+import { checked } from './fixtures.js'
 
 const AT = '2026-11-23T06:00:00.000Z'
 
 function machine(store = memoryStore()) {
-  return createProjectState({
+  return createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }),
     store,
     now: () => Date.parse(AT),
     runChild: async () => ({
@@ -20,7 +20,7 @@ function machine(store = memoryStore()) {
 }
 
 function startTwo(state) {
-  return state.startProject({ name: 'demo', goal: '把登录做出来', acceptance: judged(['能登录', '提示清楚']) })
+  return state.startProject({ name: 'demo', goal: '把登录做出来', acceptance: checked(['能登录', '提示清楚']) })
 }
 
 function part(title, files, covers, extra = {}) {
@@ -111,7 +111,7 @@ test('改覆盖关系等于改了这部分定义，旧验收记录不能冒充�
   })
   state.approvePlan({ by: 'user' })
   await state.dispatchNext()
-  assert.equal(state.verifyPart({ part: 'P1', verdict: 'pass', reason: 'AC-1 对上' }).ok, true)
+  assert.equal(state.verifyPart({ part: 'P1', reason: 'AC-1 对上' }).ok, true)
 
   // P1 改成覆盖 AC-2：它不再是原来那件事，旧记录必须丢掉。
   const revised = state.submitPlan({

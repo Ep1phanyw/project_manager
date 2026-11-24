@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { formatStatus } from '../lib/format.js'
 import { createProjectState } from '../lib/project-state.js'
 import { memoryStore } from './memory-store.js'
-import { judged } from './fixtures.js'
+import { checked } from './fixtures.js'
 
 const AT = '2026-11-23T06:00:00.000Z'
 
@@ -18,13 +18,15 @@ const DONE = {
 }
 
 function scenario(responses = [DONE, DONE]) {
+  const control = { code: 0 }
   const store = memoryStore()
   const state = createProjectState({
+    runCommand: () => ({ code: control.code, output: control.code === 0 ? 'ok' : '失败' }),
     store,
     now: () => Date.parse(AT),
     runChild: async () => responses.shift() ?? DONE,
   })
-  state.startProject({ name: 'demo', goal: '把登录流程做出来', acceptance: judged(['能登录']) })
+  state.startProject({ name: 'demo', goal: '把登录流程做出来', acceptance: checked(['能登录']) })
   state.submitPlan({
     parts: [
       { title: '做登录页', files: ['src/login.js'], evidence: 'test', covers: ['AC-1'] },
@@ -32,14 +34,14 @@ function scenario(responses = [DONE, DONE]) {
     ],
   })
   state.approvePlan({ by: 'user' })
-  return { store, state }
+  return { store, state, control }
 }
 
 async function finishAll(state) {
   await state.dispatchNext()
-  state.verifyPart({ part: 'P1', verdict: 'pass', reason: 'AC-1 对上' })
+  state.verifyPart({ part: 'P1' })
   await state.dispatchNext()
-  state.verifyPart({ part: 'P2', verdict: 'pass', reason: 'AC-1 端到端对上' })
+  state.verifyPart({ part: 'P2' })
 }
 
 test('所有部分验收通过后进入收尾验收，而不是直接算完成', async () => {
@@ -106,7 +108,7 @@ test('还有部分没过时，不许做收尾验收', async () => {
   const { state } = scenario()
   state.nextPart()
   await state.dispatchNext()
-  state.verifyPart({ part: 'P1', verdict: 'pass', reason: '对上' })
+  state.verifyPart({ part: 'P1', reason: '对上' })
 
   const result = state.acceptRun({ summary: '跑了', evidence: ['test：全绿'] })
 
@@ -116,16 +118,16 @@ test('还有部分没过时，不许做收尾验收', async () => {
 
 test('完成的项目重开后仍显示完成', async () => {
   const store = memoryStore()
-  const first = createProjectState({ store, now: () => Date.parse(AT), runChild: async () => DONE })
-  first.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
+  const first = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }), store, now: () => Date.parse(AT), runChild: async () => DONE })
+  first.startProject({ name: 'demo', goal: '做点事', acceptance: checked(['一条']) })
   first.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   first.approvePlan({ by: 'user' })
   await first.dispatchNext()
-  first.verifyPart({ part: 'P1', verdict: 'pass', reason: '对上' })
+  first.verifyPart({ part: 'P1', reason: '对上' })
   first.acceptRun({ summary: '跑了', evidence: ['test：全绿'] })
   first.acceptProject({ by: 'user' })
 
-  const reopened = createProjectState({ store })
+  const reopened = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }), store })
   const { project } = reopened.status()
 
   assert.equal(project.allDone, true)
@@ -133,11 +135,13 @@ test('完成的项目重开后仍显示完成', async () => {
 })
 
 test('状态里能看到每个部分的重试次数', async () => {
-  const { state } = scenario()
+  const { state, control } = scenario()
+  control.code = 1
   await state.dispatchNext()
-  state.verifyPart({ part: 'P1', verdict: 'fail', reason: '证据不足' })
+  state.verifyPart({ part: 'P1' })
+  control.code = 0
   await state.dispatchNext()
-  state.verifyPart({ part: 'P1', verdict: 'pass', reason: '这次对上了' })
+  state.verifyPart({ part: 'P1' })
 
   const text = formatStatus(state.status().project)
 
@@ -146,16 +150,16 @@ test('状态里能看到每个部分的重试次数', async () => {
 
 test('阻塞的项目重开后仍显示同一个阻塞原因', async () => {
   const store = memoryStore()
-  const first = createProjectState({ store, now: () => Date.parse(AT), runChild: async () => DONE })
-  first.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
+  const first = createProjectState({ runCommand: () => ({ code: 1, output: '失败' }), store, now: () => Date.parse(AT), runChild: async () => DONE })
+  first.startProject({ name: 'demo', goal: '做点事', acceptance: checked(['一条']) })
   first.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   first.approvePlan({ by: 'user' })
   await first.dispatchNext()
-  first.verifyPart({ part: 'P1', verdict: 'fail', reason: '同一个原因' })
+  first.verifyPart({ part: 'P1' })
   await first.dispatchNext()
-  first.verifyPart({ part: 'P1', verdict: 'fail', reason: '同一个原因' })
+  first.verifyPart({ part: 'P1' })
 
-  const reopened = createProjectState({ store })
+  const reopened = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }), store })
   const report = reopened.blockReport()
 
   assert.equal(report.ok, true)
@@ -164,11 +168,12 @@ test('阻塞的项目重开后仍显示同一个阻塞原因', async () => {
 })
 
 test('用户处理完阻塞后可以恢复，项目重新可派分', async () => {
-  const { state } = scenario()
+  const { state, control } = scenario()
+  control.code = 1
   await state.dispatchNext()
-  state.verifyPart({ part: 'P1', verdict: 'fail', reason: '同一个原因' })
+  state.verifyPart({ part: 'P1' })
   await state.dispatchNext()
-  state.verifyPart({ part: 'P1', verdict: 'fail', reason: '同一个原因' })
+  state.verifyPart({ part: 'P1' })
 
   assert.equal(state.nextPart().ok, false)
 
@@ -185,11 +190,12 @@ test('用户处理完阻塞后可以恢复，项目重新可派分', async () =>
 })
 
 test('恢复阻塞只认用户，且要写说明', async () => {
-  const { state } = scenario()
+  const { state, control } = scenario()
+  control.code = 1
   await state.dispatchNext()
-  state.verifyPart({ part: 'P1', verdict: 'fail', reason: '同一个原因' })
+  state.verifyPart({ part: 'P1' })
   await state.dispatchNext()
-  state.verifyPart({ part: 'P1', verdict: 'fail', reason: '同一个原因' })
+  state.verifyPart({ part: 'P1' })
 
   const byModel = state.resolvePart({ by: 'model', part: 'P1', reason: '我来处理' })
   assert.equal(byModel.ok, false)
@@ -210,8 +216,8 @@ test('没有阻塞时不能恢复', () => {
 
 test('重开后能接着跑，不需要重新批准计划', async () => {
   const store = memoryStore()
-  const first = createProjectState({ store, now: () => Date.parse(AT), runChild: async () => DONE })
-  first.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
+  const first = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }), store, now: () => Date.parse(AT), runChild: async () => DONE })
+  first.startProject({ name: 'demo', goal: '做点事', acceptance: checked(['一条']) })
   first.submitPlan({
     parts: [
       { title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] },
@@ -220,9 +226,9 @@ test('重开后能接着跑，不需要重新批准计划', async () => {
   })
   first.approvePlan({ by: 'user' })
   await first.dispatchNext()
-  first.verifyPart({ part: 'P1', verdict: 'pass', reason: '对上' })
+  first.verifyPart({ part: 'P1', reason: '对上' })
 
-  const reopened = createProjectState({
+  const reopened = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }),
     store,
     now: () => Date.parse(AT),
     runChild: async () => DONE,

@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 
 import { createProjectState } from '../lib/project-state.js'
 import { memoryStore } from './memory-store.js'
-import { judged } from './fixtures.js'
+import { checked } from './fixtures.js'
 
 const AT = '2026-11-23T00:00:00.000Z'
 
@@ -19,7 +19,7 @@ const DONE = {
 
 /** 一路跑到所有部分验收通过，停在收尾验收前。 */
 async function verifiedProject(store, extra = {}) {
-  const state = createProjectState({
+  const state = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }),
     store,
     now: () => Date.parse(AT),
     runChild: async () => ({ ok: true, report: DONE }),
@@ -28,13 +28,13 @@ async function verifiedProject(store, extra = {}) {
   state.startProject({
     name: 'demo',
     goal: '做点事',
-    acceptance: judged(['一条']),
+    acceptance: checked(['一条']),
     verify: extra.verifyCommand,
   })
   state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   state.approvePlan({ by: 'user' })
   await state.dispatchNext()
-  state.verifyPart({ part: 'P1', verdict: 'pass', reason: '对上' })
+  state.verifyPart({ part: 'P1', reason: '对上' })
   return state
 }
 
@@ -42,7 +42,7 @@ test('核对命令会存进项目状态，换个实例读回来还在', async ()
   const store = memoryStore()
   await verifiedProject(store, { verifyCommand: 'node test/run.js' })
 
-  const reopened = createProjectState({ store })
+  const reopened = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }), store })
   const { project } = reopened.status()
 
   assert.equal(project.verify, 'node test/run.js')
@@ -109,12 +109,12 @@ test('没配核对命令时照旧，只收文字证据', async () => {
 })
 
 test('核对命令带换行会被拒 —— 否则状态文件会被写坏', () => {
-  const state = createProjectState({ store: memoryStore(), now: () => Date.parse(AT) })
+  const state = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }), store: memoryStore(), now: () => Date.parse(AT) })
 
   const result = state.startProject({
     name: 'demo',
     goal: '做点事',
-    acceptance: judged(['一条']),
+    acceptance: checked(['一条']),
     verify: 'node a.js\nnode b.js',
   })
 

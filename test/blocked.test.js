@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { createProjectState } from '../lib/project-state.js'
 import { formatBlockReport } from '../lib/format.js'
 import { memoryStore } from './memory-store.js'
-import { judged } from './fixtures.js'
+import { checked } from './fixtures.js'
 
 const AT = '2026-11-23T06:00:00.000Z'
 
@@ -17,14 +17,15 @@ const DONE_REPORT = {
   },
 }
 
-function scenario(responses = [DONE_REPORT]) {
+function scenario(responses = [DONE_REPORT], { failing = false } = {}) {
   const store = memoryStore()
   const state = createProjectState({
+    runCommand: () => ({ code: failing ? 1 : 0, output: failing ? '断言失败' : 'ok' }),
     store,
     now: () => Date.parse(AT),
     runChild: async () => responses.shift() ?? DONE_REPORT,
   })
-  state.startProject({ name: 'demo', goal: '把登录流程做出来', acceptance: judged(['能登录']) })
+  state.startProject({ name: 'demo', goal: '把登录流程做出来', acceptance: checked(['能登录']) })
   state.submitPlan({
     parts: [
       { title: '做登录页', files: ['src/login.js'], evidence: 'test', covers: ['AC-1'] },
@@ -36,12 +37,12 @@ function scenario(responses = [DONE_REPORT]) {
 }
 
 test('同一部分连续两次同样的验收失败会自动进入阻塞', async () => {
-  const { state } = scenario()
+  const { state } = scenario([DONE_REPORT], { failing: true })
 
   await state.dispatchNext()
-  state.verifyPart({ part: 'P1', verdict: 'fail', reason: '证据里没有测试输出' })
+  state.verifyPart({ part: 'P1' })
   await state.dispatchNext()
-  const second = state.verifyPart({ part: 'P1', verdict: 'fail', reason: '证据里没有测试输出' })
+  const second = state.verifyPart({ part: 'P1' })
 
   assert.equal(second.ok, true)
   assert.equal(second.blocked, true)
@@ -52,12 +53,12 @@ test('同一部分连续两次同样的验收失败会自动进入阻塞', async
 })
 
 test('两次失败理由不同时不会自动阻塞', async () => {
-  const { state } = scenario()
+  const { state } = scenario([DONE_REPORT], { failing: true })
 
   await state.dispatchNext()
-  state.verifyPart({ part: 'P1', verdict: 'fail', reason: '证据里没有测试输出' })
+  state.verifyPart({ part: 'P1', reason: '证据里没有测试输出' })
   await state.dispatchNext()
-  const second = state.verifyPart({ part: 'P1', verdict: 'fail', reason: '登录页压根没写' })
+  const second = state.verifyPart({ part: 'P1', reason: '登录页压根没写' })
 
   assert.equal(second.ok, true)
   assert.equal(second.blocked, undefined)
@@ -65,11 +66,11 @@ test('两次失败理由不同时不会自动阻塞', async () => {
 })
 
 test('阻塞后派分停下，并说明卡在哪', async () => {
-  const { state } = scenario()
+  const { state } = scenario([DONE_REPORT], { failing: true })
   await state.dispatchNext()
-  state.verifyPart({ part: 'P1', verdict: 'fail', reason: '同一个原因' })
+  state.verifyPart({ part: 'P1' })
   await state.dispatchNext()
-  state.verifyPart({ part: 'P1', verdict: 'fail', reason: '同一个原因' })
+  state.verifyPart({ part: 'P1' })
 
   const next = state.nextPart()
 
@@ -187,11 +188,11 @@ test('模型不能声称「连续失败」阻塞，除非记录里真的有', as
 })
 
 test('阻塞报告说清卡在哪、试过什么、需要你给什么', async () => {
-  const { state } = scenario()
+  const { state } = scenario([DONE_REPORT], { failing: true })
   await state.dispatchNext()
-  state.verifyPart({ part: 'P1', verdict: 'fail', reason: '证据里没有测试输出' })
+  state.verifyPart({ part: 'P1' })
   await state.dispatchNext()
-  state.verifyPart({ part: 'P1', verdict: 'fail', reason: '证据里没有测试输出' })
+  state.verifyPart({ part: 'P1' })
 
   const report = state.blockReport()
 
@@ -201,7 +202,7 @@ test('阻塞报告说清卡在哪、试过什么、需要你给什么', async ()
   const text = formatBlockReport(report.blocked)
   assert.match(text, /P1/)
   assert.match(text, /连续两次/)
-  assert.match(text, /证据里没有测试输出/)
+  assert.match(text, /AC-1/)
   assert.match(text, /试过/)
   assert.match(text, /第 1 次/)
   assert.match(text, /需要你/)
@@ -219,7 +220,7 @@ test('阻塞情形不接受原型上的名字', () => {
 test('已经验收通过的部分不能再报阻塞', async () => {
   const { state } = scenario()
   await state.dispatchNext()
-  state.verifyPart({ part: 'P1', verdict: 'pass', reason: 'AC-1 对上' })
+  state.verifyPart({ part: 'P1', reason: 'AC-1 对上' })
 
   const result = state.requestBlock({
     part: 'P1',
@@ -232,11 +233,11 @@ test('已经验收通过的部分不能再报阻塞', async () => {
 })
 
 test('有部分处于阻塞时不能改计划 —— 改计划不能替用户裁决', async () => {
-  const { state } = scenario()
+  const { state } = scenario([DONE_REPORT], { failing: true })
   await state.dispatchNext()
-  state.verifyPart({ part: 'P1', verdict: 'fail', reason: '同一个原因' })
+  state.verifyPart({ part: 'P1' })
   await state.dispatchNext()
-  state.verifyPart({ part: 'P1', verdict: 'fail', reason: '同一个原因' })
+  state.verifyPart({ part: 'P1' })
 
   const result = state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
 

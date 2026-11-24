@@ -5,9 +5,9 @@
  * 状态落在会话工作区的 `.scratch/` 下，是普通 markdown。
  */
 
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
-import { join } from 'node:path'
+import { join, resolve, sep } from 'node:path'
 
 import { formatStatus } from './lib/format.js'
 import { EVIDENCE_TYPES, createProjectState } from './lib/project-state.js'
@@ -169,6 +169,9 @@ export function apply(ctx, config) {
       evidenceTypes,
       strayCheck: (part) => strayChanges(workspace, part.files),
       runVerify: (command) => runCommandCapture(command, { cwd: workspace }),
+      // 验收时插件亲自跑检查：一条命令、或者一个产物。
+      runCommand: (command) => runCommandCapture(command, { cwd: workspace }),
+      readFile: (path) => readWorkspaceFile(workspace, path),
     })
   }
 
@@ -323,19 +326,15 @@ export function apply(ctx, config) {
   registerTool(ctx, stateFor, {
     name: TOOL_VERIFY,
     description:
-      '验收一个部分。子对话说完成只是候选，这里才决定算不算数：pass 要拿证据对上验收标准并写明理由；fail 要写明差在哪，该部分会被重新派分。',
+      '验收一个部分：插件执行这部分覆盖的每条验收标准上的检查，按执行结果给出结论 —— 有检查没过就打回（附带未通过明细与输出），全过但涉及判断型标准就进「待你确认」，否则算通过。结论由插件算，模型不能指定 pass 或 fail。',
     parameters: {
       type: 'object',
       properties: {
         part: { type: 'string', description: '部分编号，形如 P1' },
-        verdict: { type: 'string', enum: ['pass', 'fail'], description: '验收结论' },
-        reason: {
-          type: 'string',
-          description: 'pass 时写它怎么对上验收标准；fail 时写差在哪',
-        },
+        reason: { type: 'string', description: '可选：一句话备注，会写进验收记录' },
         project: { type: 'string', description: '项目名；当前只有一个项目时可以省略' },
       },
-      required: ['part', 'verdict', 'reason'],
+      required: ['part'],
       additionalProperties: false,
     },
     async run(args, state) {
@@ -361,9 +360,11 @@ export function apply(ctx, config) {
       return {
         ok: true,
         text:
-          (result.verdict === 'pass'
+          (result.verdict === 'accepted'
             ? `部分 ${result.part.id} 验收通过。`
-            : `部分 ${result.part.id} 验收不通过，已回到可派分。`) + note,
+            : result.verdict === 'needs-user-verification'
+              ? `部分 ${result.part.id} 检查全过，等你确认：${(result.judgements ?? []).join('、')}。用 /${COMMAND_NAME} confirm 点头，或 /${COMMAND_NAME} decline [理由] 打回。`
+              : `部分 ${result.part.id} 验收不通过（${(result.failures ?? []).join('、')}），已回到可派分。`) + note,
       }
     },
   })
@@ -679,6 +680,23 @@ function originChecker(workspace) {
       // 读不动就当找不到：报「来源找不到」比抛一个 fs 错误更可读。
       return false
     }
+  }
+}
+
+/**
+ * 验收里的产物检查要读文件：只允许读工作区里的东西，读不到就是「不在」。
+ * 路径越界按读不到处理，不抛错、也不悄悄读到工作区外面去。
+ */
+function readWorkspaceFile(workspace, path) {
+  const root = resolve(workspace)
+  const absolute = resolve(root, path)
+
+  if (absolute !== root && !absolute.startsWith(root + sep)) return null
+
+  try {
+    return readFileSync(absolute, 'utf8')
+  } catch {
+    return null
   }
 }
 

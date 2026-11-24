@@ -12,7 +12,7 @@ const REPORT = {
 }
 
 function machine(store = memoryStore()) {
-  return createProjectState({
+  return createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }),
     store,
     now: () => Date.parse(AT),
     runChild: async () => REPORT,

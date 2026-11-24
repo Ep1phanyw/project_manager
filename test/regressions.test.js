@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 
 import { createProjectState } from '../lib/project-state.js'
 import { memoryStore } from './memory-store.js'
-import { judged } from './fixtures.js'
+import { checked } from './fixtures.js'
 
 const AT = '2026-11-23T00:00:00.000Z'
 
@@ -25,13 +25,13 @@ const WAITING = {
 
 function setup() {
   const store = memoryStore()
-  const state = createProjectState({ store, now: () => Date.parse(AT) })
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
+  const state = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }), store, now: () => Date.parse(AT) })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: checked(['一条']) })
   return { store, state }
 }
 
 function approved(store) {
-  const state = createProjectState({ store, now: () => Date.parse(AT) })
+  const state = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }), store, now: () => Date.parse(AT) })
   state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   state.approvePlan({ by: 'user' })
   return state
@@ -77,7 +77,7 @@ test('部分记录读不懂时验收也停下', () => {
 
   store.write('demo', { parts: '这一行谁也认不出来\n' })
 
-  const result = state.verifyPart({ part: 'P1', verdict: 'pass', reason: '看过了' })
+  const result = state.verifyPart({ part: 'P1', reason: '看过了' })
 
   assert.equal(result.ok, false)
   assert.match(result.problem, /读不懂/)
@@ -85,14 +85,14 @@ test('部分记录读不懂时验收也停下', () => {
 
 test('在等用户确认的部分不能被报阻塞 —— 那是用户的裁决', async () => {
   const store = memoryStore()
-  let state = createProjectState({
+  let state = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }),
     store,
     now: () => Date.parse(AT),
     runChild: async () => ({ ok: true, report: WAITING }),
   })
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: checked(['一条']) })
   state = approved(store)
-  state = createProjectState({
+  state = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }),
     store,
     now: () => Date.parse(AT),
     runChild: async () => ({ ok: true, report: WAITING }),
@@ -108,12 +108,12 @@ test('在等用户确认的部分不能被报阻塞 —— 那是用户的裁决
 
 test('已经用户确认的部分不能再被报阻塞', async () => {
   const store = memoryStore()
-  const state = createProjectState({
+  const state = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }),
     store,
     now: () => Date.parse(AT),
     runChild: async () => ({ ok: true, report: WAITING }),
   })
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: checked(['一条']) })
   state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   state.approvePlan({ by: 'user' })
   await state.dispatchNext()
@@ -127,16 +127,16 @@ test('已经用户确认的部分不能再被报阻塞', async () => {
 
 test('验收通过后仍然不能再报阻塞 —— 老用例不许回退', async () => {
   const store = memoryStore()
-  const state = createProjectState({
+  const state = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }),
     store,
     now: () => Date.parse(AT),
     runChild: async () => ({ ok: true, report: DONE }),
   })
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: checked(['一条']) })
   state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   state.approvePlan({ by: 'user' })
   await state.dispatchNext()
-  state.verifyPart({ part: 'P1', verdict: 'pass', reason: '看过了' })
+  state.verifyPart({ part: 'P1', reason: '看过了' })
 
   const result = state.requestBlock({ part: 'P1', condition: 'missing-user-input', detail: '缺东西' })
 

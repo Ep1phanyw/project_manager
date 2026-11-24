@@ -4,19 +4,19 @@ import assert from 'node:assert/strict'
 import { formatStatus } from '../lib/format.js'
 import { createProjectState } from '../lib/project-state.js'
 import { memoryStore } from './memory-store.js'
-import { judged } from './fixtures.js'
+import { checked } from './fixtures.js'
 
 const AT = '2026-11-23T06:00:00.000Z'
 
 function approvedProject(runChild) {
   const store = memoryStore()
-  const state = createProjectState({
+  const state = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }),
     store,
     now: () => Date.parse(AT),
     runChild,
   })
 
-  state.startProject({ name: 'demo', goal: '把登录流程做出来', acceptance: judged(['能登录']) })
+  state.startProject({ name: 'demo', goal: '把登录流程做出来', acceptance: checked(['能登录']) })
   state.submitPlan({
     parts: [
       { title: '做登录页', files: ['src/login.js'], evidence: 'test', covers: ['AC-1'] },
@@ -182,13 +182,13 @@ test('待用户确认是合法回报，不算完成', async () => {
 
 test('记录会落盘，换个实例仍能读回状态与轮次', async () => {
   const store = memoryStore()
-  const first = createProjectState({ store, now: () => Date.parse(AT), runChild: async () => ({ ok: true, report: GOOD_REPORT }) })
-  first.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
+  const first = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }), store, now: () => Date.parse(AT), runChild: async () => ({ ok: true, report: GOOD_REPORT }) })
+  first.startProject({ name: 'demo', goal: '做点事', acceptance: checked(['一条']) })
   first.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   first.approvePlan({ by: 'user' })
   await first.dispatchNext()
 
-  const reopened = createProjectState({ store })
+  const reopened = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }), store })
   const { project } = reopened.status()
 
   assert.equal(project.partStatus.P1, 'done')
@@ -215,7 +215,7 @@ test('子对话失败后可以重试，轮次递增且历史不丢', async () =>
 test('未批准时派分被挡住，子对话根本不会被起', async () => {
   let called = false
   const store = memoryStore()
-  const state = createProjectState({
+  const state = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }),
     store,
     now: () => Date.parse(AT),
     runChild: async () => {
@@ -223,7 +223,7 @@ test('未批准时派分被挡住，子对话根本不会被起', async () => {
       return { ok: true, report: GOOD_REPORT }
     },
   })
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: checked(['一条']) })
   state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
 
   const result = await state.dispatchNext()
@@ -235,8 +235,8 @@ test('未批准时派分被挡住，子对话根本不会被起', async () => {
 
 test('没配子对话执行器时明确报错，而不是假装派了', async () => {
   const store = memoryStore()
-  const state = createProjectState({ store, now: () => Date.parse(AT) })
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
+  const state = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }), store, now: () => Date.parse(AT) })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: checked(['一条']) })
   state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   state.approvePlan({ by: 'user' })
 
@@ -250,7 +250,7 @@ test('第一个部分验收通过后，下一次派分轮到它后面的部分',
   const { state } = approvedProject(async () => ({ ok: true, report: GOOD_REPORT }))
 
   const first = await state.dispatchNext()
-  state.verifyPart({ part: 'P1', verdict: 'pass', reason: 'AC-1 由测试覆盖' })
+  state.verifyPart({ part: 'P1', reason: 'AC-1 由测试覆盖' })
   const second = await state.dispatchNext()
 
   assert.equal(first.part.id, 'P1')
@@ -280,7 +280,7 @@ test('部分报了阻塞时停下，不会反复重跑同一个部分', async ()
 test('子对话的任务描述里会点出既有约定文件', async () => {
   let seen = null
   const store = memoryStore()
-  const state = createProjectState({
+  const state = createProjectState({ runCommand: () => ({ code: 0, output: 'ok' }),
     store,
     now: () => Date.parse(AT),
     runChild: async (task) => {
@@ -289,7 +289,7 @@ test('子对话的任务描述里会点出既有约定文件', async () => {
     },
     contextFiles: () => ['README.md', 'GLOSSARY.md'],
   })
-  state.startProject({ name: 'demo', goal: '做点事', acceptance: judged(['一条']) })
+  state.startProject({ name: 'demo', goal: '做点事', acceptance: checked(['一条']) })
   state.submitPlan({ parts: [{ title: '甲', files: ['a.js'], evidence: 'test', covers: ['AC-1'] }] })
   state.approvePlan({ by: 'user' })
 
