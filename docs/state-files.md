@@ -1,13 +1,14 @@
 # 状态文件
 
-每个项目一个目录：`.scratch/<项目名>/`，里面四个普通 markdown 文件。写哪几个文件、以什么顺序落盘由 `lib/store.js` 决定；每一行的格式由 `lib/project-state.js`（前三个文件）和 `lib/records.js`（`parts.md`）决定，读回时按同一套格式解析。
+每个项目一个目录：`.scratch/<项目名>/`，里面五个普通 markdown 文件。写哪几个文件、以什么顺序落盘由 `lib/store.js` 决定；每一行的格式由 `lib/project-state.js`（前三个文件与 `project.md`）、`lib/records.js`（`parts.md` 与 `acceptance-run.md`）决定，读回时按同一套格式解析。
 
 ```
 .scratch/<项目名>/
-├── project.md      # 项目本身：名字、阶段、目标、审批记录、验收指纹
-├── acceptance.md   # 逐条验收标准
-├── plan.md         # 部分清单：依赖、证据类型、文件集
-└── parts.md        # 每次派分与裁决的记录
+├── project.md        # 项目本身：名字、阶段、格式版本、目标、审批记录、验收指纹、编号登记
+├── acceptance.md     # 逐条验收标准，每条带一个检查
+├── plan.md           # 部分清单：依赖、证据类型、覆盖的验收标准、文件集
+├── parts.md          # 每次派分与裁决的记录
+└── acceptance-run.md # 收尾验收的记录
 ```
 
 下面每个文件先给一份渲染出来的样子，再逐行说明。
