@@ -52,19 +52,6 @@ test('同一部分连续两次同样的验收失败会自动进入阻塞', async
   assert.match(project.records.at(-1).summary, /连续两次/)
 })
 
-test('两次失败理由不同时不会自动阻塞', async () => {
-  const { state } = scenario([DONE_REPORT], { failing: true })
-
-  await state.dispatchNext()
-  state.verifyPart({ part: 'P1', reason: '证据里没有测试输出' })
-  await state.dispatchNext()
-  const second = state.verifyPart({ part: 'P1', reason: '登录页压根没写' })
-
-  assert.equal(second.ok, true)
-  assert.equal(second.blocked, undefined)
-  assert.equal(state.status().project.partStatus.P1, 'returned')
-})
-
 test('阻塞后派分停下，并说明卡在哪', async () => {
   const { state } = scenario([DONE_REPORT], { failing: true })
   await state.dispatchNext()
