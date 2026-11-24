@@ -14,7 +14,7 @@ import { EVIDENCE_TYPES, createProjectState } from './lib/project-state.js'
 import { createFsStore } from './lib/store.js'
 
 import { formatBlockReport } from './lib/format.js'
-import { readEvidenceTypes, readSnapshotMode } from './lib/config.js'
+import { readEvidenceTypes, readParallelLimit, readSnapshotMode } from './lib/config.js'
 import { FLOW, flowBrief, flowSkillRegistrations, readSkill } from './lib/skills.js'
 import { strayChanges } from './lib/git.js'
 import { runCommandCapture } from './lib/exec.js'
@@ -173,6 +173,14 @@ export function apply(ctx, config) {
       // 验收时插件亲自跑检查：一条命令、或者一个产物。
       runCommand: (command) => runCommandCapture(command, { cwd: workspace }),
       readFile: (path) => readWorkspaceFile(workspace, path),
+      maxParallel: readParallelLimit(config),
+      capacity: () => {
+        try {
+          return ctx.subagents?.capacityOf?.(agent) ?? null
+        } catch {
+          return null
+        }
+      },
     })
   }
 
@@ -295,7 +303,7 @@ export function apply(ctx, config) {
   registerTool(ctx, stateFor, {
     name: TOOL_RUN,
     description:
-      '跑下一个可派分的部分：起一个独立上下文的子对话去做它，把结构化回报记进项目。子对话失败或回报不合规时记为可重试，不会让项目崩掉。',
+      '派分可以开工的部分：互不依赖、文件集不相交的部分会同时在独立上下文的子对话里跑（上限由配置与平台剩余名额决定），其余则一次一个。子对话失败或回报不合规时记为可重试，不会让项目崩掉。',
     parameters: {
       type: 'object',
       properties: {
@@ -304,7 +312,7 @@ export function apply(ctx, config) {
       additionalProperties: false,
     },
     async run(args, state, exec) {
-      const result = await state.dispatchNext({ project: args?.project, signal: exec.signal })
+      const result = await state.dispatchAll({ project: args?.project, signal: exec.signal })
       if (!result.ok) {
         return {
           ok: false,
@@ -312,15 +320,21 @@ export function apply(ctx, config) {
         }
       }
 
-      const stray =
-        result.stray?.length > 0
-          ? `\n\n注意：这个部分改到了声明之外的文件 —— ${result.stray.join('、')}。验收时先看这些改动。`
-          : ''
+      const lines = result.results.map((one) => {
+        if (!one.ok) return `部分 ${one.provider ?? ''}${one.part?.id ?? ''}：${one.problem}`
+        const stray =
+          one.stray?.length > 0
+            ? `\n  注意：改到了声明之外的文件 —— ${one.stray.join('、')}`
+            : ''
+        return `部分 ${one.part.id}「${one.part.title}」第 ${one.attempt} 次回报：${one.report.status}。${one.report.summary}${stray}`
+      })
 
-      return {
-        ok: true,
-        text: `部分 ${result.part.id}「${result.part.title}」第 ${result.attempt} 次回报：${result.report.status}。${result.report.summary}${stray}`,
-      }
+      const head =
+        result.count > 1
+          ? `同时派了 ${result.count} 个部分（上限 ${result.limit}）：`
+          : `派了 1 个部分：`
+
+      return { ok: true, text: `${head}\n${lines.join('\n')}` }
     },
   })
 
@@ -393,7 +407,7 @@ export function apply(ctx, config) {
         const report = state.blockReport({ project: args?.project })
         if (!report.ok) {
           // 「没有阻塞」是个正常的查询结果，不该当成错误抛给模型。
-          if (report.problem === '现在没有部分处于阻塞') {
+          if (report.problem?.includes('没有部分处于阻塞')) {
             return { ok: true, text: '当前没有部分处于阻塞。' }
           }
           return report
