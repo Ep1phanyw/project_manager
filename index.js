@@ -15,7 +15,7 @@ import { createFsStore } from './lib/store.js'
 
 import { formatBlockReport } from './lib/format.js'
 import { readEvidenceTypes, readParallelLimit, readSnapshotMode } from './lib/config.js'
-import { describeCapabilities } from './lib/capabilities.js'
+import { describeCapabilities, canDispatch, detectCapabilities, subagentsOf } from './lib/capabilities.js'
 import { FLOW, flowBrief, flowSkillRegistrations, readSkill } from './lib/skills.js'
 import { strayChanges } from './lib/git.js'
 import { runCommandCapture } from './lib/exec.js'
@@ -114,11 +114,7 @@ export function apply(ctx, config) {
     const detected = detectDshVersion()
 
     // 四项核心能力先按纯函数算：在不在、缺了会怎样。
-    const available = new Set()
-    if (typeof ctxRef.commands?.register === 'function') available.add('commands')
-    if (typeof ctxRef.tools?.register === 'function') available.add('tools')
-    if (typeof ctxRef.workingDirectory?.ensure === 'function') available.add('workingDirectory')
-    if (typeof ctxRef.get?.('subagents')?.startActivation === 'function') available.add('subagents')
+    const available = detectCapabilities(ctxRef)
 
     return formatDoctorReport({
       version: detected.version,
@@ -183,7 +179,7 @@ export function apply(ctx, config) {
       maxParallel: readParallelLimit(config),
       capacity: () => {
         try {
-          return ctx.get?.('subagents')?.capacityOf?.(agent) ?? null
+          return subagentsOf(ctx)?.capacityOf?.(agent) ?? null
         } catch {
           return null
         }
@@ -644,10 +640,10 @@ function childRunner(ctx, parent, workspace) {
     if (!parent) return { ok: false, problem: '没有会话上下文，起不了子对话' }
 
     // 子对话能力是软依赖：运行时探测，缺了就明说，不假装在跑。
-    const subagents = ctx.get?.('subagents')
-    if (typeof subagents?.startActivation !== 'function') {
+    if (!canDispatch(ctx)) {
       return { ok: false, problem: '本环境没有子对话能力：可以规划与看状态，但派分跑不了' }
     }
+    const subagents = subagentsOf(ctx)
 
     const activation = await subagents.startActivation({
       provider: 'spawn',
