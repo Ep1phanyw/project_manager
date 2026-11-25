@@ -25,6 +25,23 @@ function machine(store, options = {}) {
   })
 }
 
+test('旧文件里没写输出断言的命令检查仍然读得出来（按允许空输出处理）', () => {
+  const store = memoryStore()
+  store.write('demo', {
+    project:
+      '# demo\n\n阶段：executing\n\n格式：2\n\n## 目标\n\n做点事\n\n## 审批\n\n- 2026-11-23T05:00:00.000Z 批准\n',
+    acceptance: '# 验收标准\n\n## [AC-1] 一条\n\n- 检查：命令 true\n- 期望退出码：0\n',
+    plan: '# 计划\n\n## [P1] 甲\n\n- 依赖：无\n- 证据：test\n- 覆盖：AC-1\n- 文件：a.js\n',
+    parts: '# 部分记录\n',
+  })
+
+  const state = machine(store, { runCommand: () => ({ code: 0, output: '' }) })
+  const result = state.status('demo')
+
+  assert.equal(result.ok, true)
+  assert.equal(result.project.acceptance[0].check.allowEmptyOutput, true)
+})
+
 test('命令检查既没有输出断言、也没声明允许空输出 → 启动被拒', () => {
   const store = memoryStore()
   const state = machine(store, { runCommand: () => ({ code: 0, output: 'ok' }) })
