@@ -578,7 +578,9 @@ export function apply(ctx, config) {
             if (!result.ok) return { kind: 'error', text: result.problem }
             return {
               kind: 'success',
-              text: `已迁移格式（备份在 ${result.backup}）：${result.count} 条旧标准迁成判断型 —— 它们只能由你确认。旧计划没有覆盖关系，请重新提交一份带覆盖的计划再批准。`,
+              text: result.approved
+                ? `已迁移格式（备份在 ${result.backup}）：${result.count} 条旧标准迁成判断型，原来的批准保留了下来，覆盖已自动分配到 ${result.parts} 个部分 —— 看一眼 plan.md，不对就改计划重新批准。`
+                : `已迁移格式（备份在 ${result.backup}）：${result.count} 条旧标准迁成判断型。旧计划没有覆盖关系，请重新提交一份带覆盖的计划再批准。`,
             }
           }
 
