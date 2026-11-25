@@ -6,7 +6,6 @@
  */
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import { join, resolve, sep } from 'node:path'
 
@@ -17,6 +16,7 @@ import { createFsStore } from './lib/store.js'
 import { formatBlockReport } from './lib/format.js'
 import { readEvidenceTypes, readParallelLimit, readSnapshotMode } from './lib/config.js'
 import { describeCapabilities, canDispatch, detectCapabilities, subagentsOf } from './lib/capabilities.js'
+import { createFingerprinter } from './lib/fingerprint.js'
 import { FLOW, flowBrief, flowSkillRegistrations, readSkill } from './lib/skills.js'
 import { strayChanges } from './lib/git.js'
 import { runCommandCapture } from './lib/exec.js'
@@ -178,7 +178,7 @@ export function apply(ctx, config) {
       runVerify: runInWorkspace,
       runCommand: runInWorkspace,
       readFile: (path) => readWorkspaceFile(workspace, path),
-      fileHash: (path) => hashWorkspaceFile(workspace, path),
+      fileHash: createFingerprinter(workspace),
       maxParallel: readParallelLimit(config),
       capacity: () => {
         try {
@@ -768,18 +768,6 @@ function readWorkspaceFile(workspace, path) {
  * 契约文件的指纹：内容变了指纹就变。读不到、或路径越界，都按「没有」处理 ——
  * 那会让验收停下，而不是悄悄放过。
  */
-function hashWorkspaceFile(workspace, path) {
-  const root = resolve(workspace)
-  const absolute = resolve(root, path)
-  if (absolute !== root && !absolute.startsWith(root + sep)) return null
-
-  try {
-    return createHash('sha256').update(readFileSync(absolute)).digest('hex').slice(0, 16)
-  } catch {
-    return null
-  }
-}
-
 /**
  * 把随包分发的三个工程技能注册进技能目录。
  *
