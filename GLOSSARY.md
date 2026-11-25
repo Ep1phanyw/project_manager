@@ -14,7 +14,7 @@ _Avoid_: feature, effort, epic
 
 _Avoid_: orchestrator, manager, coordinator, 项目经理
 
-_Note_: 插件与命令叫 `project_manager` / `/manager`，那是产品名；这个概念本身一律叫「主对话」，工具名也不该被读成对这个概念的另一种称呼。
+_Note_: 插件与命令叫 `dsh-project-manager` / `/manager`，那是产品名；这个概念本身一律叫「主对话」，工具名也不该被读成对这个概念的另一种称呼。
 
 **Plan**（计划）:
 项目开始时产出、并经用户批准的部分清单，含每部分的先后顺序、依赖关系、涉及的文件集，以及它覆盖的验收标准。

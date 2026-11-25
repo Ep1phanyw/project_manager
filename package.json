@@ -1,6 +1,6 @@
 {
-  "name": "project_manager",
-  "version": "0.1.0",
+  "name": "dsh-project-manager",
+  "version": "0.3.0",
   "description": "把一次项目交付拆成部分、分派给子对话、按验收标准收工。",
   "keywords": [
     "dsh",

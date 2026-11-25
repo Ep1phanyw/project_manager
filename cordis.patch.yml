@@ -1,4 +1,4 @@
-# project_manager 的 bundle patch —— 把插件挂进 DSH 配置树。
+# dsh-project-manager 的 bundle patch —— 把插件挂进 DSH 配置树。
 # id 与包名一致，避免与其它插件的行标识冲突。
 #
 # 可选配置（不写就用默认值）：
@@ -14,12 +14,12 @@
 #
 # 例：
 # - insert:
-#     - id: project_manager
-#       name: 'project_manager'
+#     - id: dsh-project-manager
+#       name: 'dsh-project-manager'
 #       config:
 #         snapshot: files
 #         evidenceTypes: [review]
 
 - insert:
-    - id: project_manager
-      name: 'project_manager'
+    - id: dsh-project-manager
+      name: 'dsh-project-manager'

@@ -1,4 +1,4 @@
-# project_manager
+# dsh-project-manager
 
 把一次交付拆成若干**部分**，交给上下文独立的**子对话**；**主对话**负责规划、派分、验收。插件只出工具，开车的是主对话。
 
@@ -28,7 +28,7 @@
 
 装好后：
 
-- 在 Plugins 页确认 `project_manager` 一行已启用；
+- 在 Plugins 页确认 `dsh-project-manager` 一行已启用；
 - 新开一个会话，输入 `/manager`。还没有项目时应该回「还没有项目；先在主对话里启动一个项目」。
 
 本包通过 `cordis.patch.yml` 挂进配置树。**硬依赖三项能力**：`commands`、`tools`、`workingDirectory` —— 缺任一项插件就不加载，这是正确的失败方式。**子对话是软依赖**：缺了插件照常加载，规划、看状态都能用，但派分跑不了，`/manager doctor` 会明说「本环境跑不了项目」。
