@@ -13,7 +13,7 @@ export function judged(texts) {
  * 给它们一条命令检查，配一个假的执行器，验收就是机械可过的。
  */
 export function checked(texts) {
-  return texts.map((text) => ({ text, check: { kind: 'command', command: 'check', expectExit: 0 } }))
+  return texts.map((text) => ({ text, check: { kind: 'command', command: 'check', expectExit: 0, allowEmptyOutput: true } }))
 }
 
 /** 假的命令执行器：默认全过；给一组命令名，它们就返回非零。 */

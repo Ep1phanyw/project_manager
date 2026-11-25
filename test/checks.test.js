@@ -6,7 +6,7 @@ import { createChecks } from '../lib/checks.js'
 const command = (id, extra = {}) => ({
   id,
   text: id,
-  check: { kind: 'command', command: 'node --test', expectExit: 0, output: '', ...extra },
+  check: { kind: 'command', command: 'node --test', expectExit: 0, allowEmptyOutput: true, output: '', ...extra },
 })
 
 const artifact = (id, extra = {}) => ({
@@ -88,6 +88,31 @@ test('没有任何标准可跑时说清楚是哪一层', () => {
 
   assert.match(checks.run([], '部分 P1').problem, /部分 P1/)
   assert.match(checks.run([], '收尾验收').problem, /收尾验收/)
+})
+
+test('空输出且没声明允许 → 判不过，理由说清楚', () => {
+  const checks = createChecks({ runCommand: () => ({ code: 0, output: '   ' }) })
+  const bare = { id: 'AC-1', text: 'AC-1', check: { kind: 'command', command: 'true', expectExit: 0 } }
+
+  const result = checks.run([bare], '部分 P1')
+
+  assert.equal(result.checks[0].ok, false)
+  assert.match(result.checks[0].detail, /输出为空/)
+})
+
+test('输出说零个用例通过 → 退出码再漂亮也不算过', () => {
+  for (const output of ['# pass 0\n# fail 0', 'Tests: 0 passing', '0 passed in 0.1s', 'no tests to run']) {
+    const checks = createChecks({ runCommand: () => ({ code: 0, output }) })
+    const result = checks.run([command('AC-1')], '部分 P1')
+    assert.equal(result.checks[0].ok, false, `应判不过：${output}`)
+  }
+})
+
+test('正常的通过输出不会被零用例规则误伤', () => {
+  const checks = createChecks({ runCommand: () => ({ code: 0, output: '# pass 12\n# fail 0' }) })
+  const result = checks.run([command('AC-1')], '部分 P1')
+
+  assert.equal(result.checks[0].ok, true)
 })
 
 test('命令输出只留尾巴，不把几千行塞进记录', () => {

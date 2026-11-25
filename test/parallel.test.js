@@ -14,7 +14,7 @@ const DONE = {
 function acceptance(count) {
   return Array.from({ length: count }, (_, index) => ({
     text: `第 ${index + 1} 条`,
-    check: { kind: 'command', command: 'check', expectExit: 0 },
+    check: { kind: 'command', command: 'check', expectExit: 0, allowEmptyOutput: true },
   }))
 }
 

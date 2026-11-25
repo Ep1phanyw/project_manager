@@ -5,7 +5,7 @@
  * 状态落在会话工作区的 `.scratch/` 下，是普通 markdown。
  */
 
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { join, resolve, sep } from 'node:path'
 
@@ -14,7 +14,7 @@ import { EVIDENCE_TYPES, createProjectState } from './lib/project-state.js'
 import { createFsStore } from './lib/store.js'
 
 import { formatBlockReport } from './lib/format.js'
-import { readEvidenceTypes, readParallelLimit, readSnapshotMode } from './lib/config.js'
+import { readEvidenceTypes, readParallelLimit, readPreRun, readSnapshotMode } from './lib/config.js'
 import { describeCapabilities, canDispatch, detectCapabilities, subagentsOf } from './lib/capabilities.js'
 import { createFingerprinter } from './lib/fingerprint.js'
 import { FLOW, flowBrief, flowSkillRegistrations, readSkill } from './lib/skills.js'
@@ -179,6 +179,8 @@ export function apply(ctx, config) {
       runCommand: runInWorkspace,
       readFile: (path) => readWorkspaceFile(workspace, path),
       fileHash: createFingerprinter(workspace),
+      writeLog: (slug, name, text) => writeProjectLog(workspace, slug, name, text),
+      preRun: readPreRun(config),
       maxParallel: readParallelLimit(config),
       capacity: () => {
         try {
@@ -219,6 +221,11 @@ export function apply(ctx, config) {
                     description: 'kind=command：期望的退出码，省略为 0',
                   },
                   output: { type: 'string', description: 'kind=command：可选的输出正则' },
+                  allowEmptyOutput: {
+                    type: 'boolean',
+                    description:
+                      'kind=command 且这条命令本来就不输出东西时，显式声明；没给输出正则又没声明，启动会被拒',
+                  },
                   path: { type: 'string', description: 'kind=artifact：要检查的文件' },
                   match: { type: 'string', description: 'kind=artifact：可选的内容正则' },
                 },
@@ -526,7 +533,13 @@ export function apply(ctx, config) {
           if (keyword === APPROVE_KEYWORD) {
             const result = state.approvePlan({ by: 'user', project: targeted ?? (args || undefined) })
             if (!result.ok) return { kind: 'error', text: result.problem }
-            return { kind: 'success', text: '计划已批准，可以开始派分部分了。' }
+
+            const warn =
+              result.preRunGreen?.length > 0
+                ? `\n\n注意：这些检查在开工前就已经通过，可能没在测你要做的事：${result.preRunGreen.join('、')}`
+                : ''
+
+            return { kind: 'success', text: `计划已批准，可以开始派分部分了。${warn}` }
           }
 
           if (keyword === REJECT_KEYWORD) {
@@ -768,6 +781,13 @@ function readWorkspaceFile(workspace, path) {
  * 契约文件的指纹：内容变了指纹就变。读不到、或路径越界，都按「没有」处理 ——
  * 那会让验收停下，而不是悄悄放过。
  */
+/** 检查的完整输出另存一份：记录里只留尾巴，事后要能翻全文。 */
+function writeProjectLog(workspace, slug, name, text) {
+  const dir = join(workspace, '.scratch', slug, 'logs')
+  mkdirSync(dir, { recursive: true })
+  writeFileSync(join(dir, name), String(text ?? ''), 'utf8')
+}
+
 /**
  * 把随包分发的三个工程技能注册进技能目录。
  *

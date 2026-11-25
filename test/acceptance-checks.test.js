@@ -21,7 +21,7 @@ function machine(store = memoryStore()) {
 
 const COMMAND = {
   text: '测试全绿',
-  check: { kind: 'command', command: 'node --test', expectExit: 0 },
+  check: { kind: 'command', command: 'node --test', expectExit: 0, allowEmptyOutput: true },
 }
 const ARTIFACT = { text: '产物在', check: { kind: 'artifact', path: 'dist/app.js' } }
 const JUDGED = { text: '界面好看', check: { kind: 'judgement' } }
@@ -99,6 +99,7 @@ test('改掉某条标准的检查就改了标准本身：批准之后被挡，�
       '',
       '- 检查：命令 npm run lint',
       '- 期望退出码：0',
+'- 允许空输出：是',
       '',
     ].join('\n'),
   })
@@ -133,6 +134,7 @@ test('文件里重排标准不改变身份，也不改变指纹', () => {
       '',
       '- 检查：命令 node --test',
       '- 期望退出码：0',
+'- 允许空输出：是',
       '',
     ].join('\n'),
   })
@@ -156,7 +158,7 @@ test('删掉的编号不复用：重新出现的同号标准被拒绝，要用�
 
   // 用户删掉 AC-2，重新读入。
   store.write('demo', {
-    acceptance: '# 验收标准\n\n## [AC-1] 测试全绿\n\n- 检查：命令 node --test\n- 期望退出码：0\n',
+    acceptance: '# 验收标准\n\n## [AC-1] 测试全绿\n\n- 检查：命令 node --test\n- 期望退出码：0\n- 允许空输出：是\n',
   })
   assert.equal(state.reopenCriteria({ by: 'user' }).ok, true)
 
@@ -169,6 +171,7 @@ test('删掉的编号不复用：重新出现的同号标准被拒绝，要用�
       '',
       '- 检查：命令 node --test',
       '- 期望退出码：0',
+'- 允许空输出：是',
       '',
       '## [AC-2] 另一条完全不同的标准',
       '',
@@ -196,6 +199,7 @@ test('用更大的新编号加标准是被允许的', () => {
       '',
       '- 检查：命令 node --test',
       '- 期望退出码：0',
+'- 允许空输出：是',
       '',
       '## [AC-4] 新加的一条',
       '',
@@ -235,7 +239,7 @@ test('批准路径同样会给删掉的编号登记退役，之后不能拿它�
 
   // 批准之后用户删掉 AC-2，改完计划再重新批准 —— 这条路径也要登记退役。
   store.write('demo', {
-    acceptance: '# 验收标准\n\n## [AC-1] 测试全绿\n\n- 检查：命令 node --test\n- 期望退出码：0\n',
+    acceptance: '# 验收标准\n\n## [AC-1] 测试全绿\n\n- 检查：命令 node --test\n- 期望退出码：0\n- 允许空输出：是\n',
   })
   state.submitPlan({ parts: [{ title: '做登录页', files: ['src/login.js'], evidence: 'test', covers: ['AC-1'] }] })
   assert.equal(state.approvePlan({ by: 'user' }).ok, true)
@@ -249,6 +253,7 @@ test('批准路径同样会给删掉的编号登记退役，之后不能拿它�
       '',
       '- 检查：命令 node --test',
       '- 期望退出码：0',
+'- 允许空输出：是',
       '',
       '## [AC-2] 全新的标准',
       '',

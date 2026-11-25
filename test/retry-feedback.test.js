@@ -12,8 +12,8 @@ const DONE = {
 }
 
 const TWO = [
-  { text: '甲能跑', check: { kind: 'command', command: 'check-a', expectExit: 0 } },
-  { text: '乙能跑', check: { kind: 'command', command: 'check-b', expectExit: 0 } },
+  { text: '甲能跑', check: { kind: 'command', command: 'check-a', expectExit: 0, allowEmptyOutput: true } },
+  { text: '乙能跑', check: { kind: 'command', command: 'check-b', expectExit: 0, allowEmptyOutput: true } },
 ]
 
 /** 哪条命令该失败，由测试随时改 —— 这样两次失败的「集合」可以特意做成不同。 */
