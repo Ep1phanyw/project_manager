@@ -6,6 +6,7 @@
  */
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import { join, resolve, sep } from 'node:path'
 
@@ -49,6 +50,7 @@ const CRITERIA_KEYWORD = 'criteria'
 const DECLINE_KEYWORD = 'decline'
 const RESOLVE_KEYWORD = 'resolve'
 const MIGRATE_KEYWORD = 'migrate'
+const CONTRACT_KEYWORD = 'contract'
 
 /** 子对话必须按这个形状回报，所以回报不靠解析自由文本。 */
 const REPORT_SCHEMA = {
@@ -176,6 +178,7 @@ export function apply(ctx, config) {
       runVerify: runInWorkspace,
       runCommand: runInWorkspace,
       readFile: (path) => readWorkspaceFile(workspace, path),
+      fileHash: (path) => hashWorkspaceFile(workspace, path),
       maxParallel: readParallelLimit(config),
       capacity: () => {
         try {
@@ -232,7 +235,13 @@ export function apply(ctx, config) {
         verify: {
           type: 'string',
           description:
-            '可选：一条核对命令（例如 node test/run.js）。配了它，收尾验收会由插件自己跑一遍，不通过就不算数 —— 证据从此不只是文字。',
+            '可选：一条整体核对命令（例如 node test/run.js）。配了它，收尾验收会由插件自己跑一遍，不通过就不算数 —— 证据从此不只是文字。',
+        },
+        protectedFiles: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            '可选：验收依据文件（测试、脚本、样例数据）。批准时记下它们的指纹，之后任何部分都不许改 —— 谁改了，验收直接停下',
         },
       },
       required: ['name', 'goal', 'acceptance'],
@@ -484,8 +493,8 @@ export function apply(ctx, config) {
       ctx.commands.register({
         name: COMMAND_NAME,
         description:
-          '项目状态、计划与审批：/manager（或 status）看状态，/manager approve 批准计划，/manager reject [理由] 驳回，/manager confirm [说明] 确认等你点头的部分，/manager decline [理由] 打回，/manager resolve [说明] 解除阻塞，/manager accept 确认收尾验收，/manager abandon [理由] 放弃项目，/manager criteria 重开验收标准，/manager migrate 迁移旧格式项目，/manager doctor 自检，/manager <项目名> 指定项目',
-        input: { hint: '[status | approve | reject [理由] | confirm [说明] | decline [理由] | resolve [说明] | accept | abandon [理由] | criteria | migrate | doctor | 项目名]' },
+          '项目状态、计划与审批：/manager（或 status）看状态，/manager approve 批准计划，/manager reject [理由] 驳回，/manager confirm [说明] 确认等你点头的部分，/manager decline [理由] 打回，/manager resolve [说明] 解除阻塞，/manager accept 确认收尾验收，/manager abandon [理由] 放弃项目，/manager criteria 重开验收标准，/manager migrate 迁移旧格式项目，/manager contract 重新钉契约指纹，/manager doctor 自检，/manager <项目名> 指定项目',
+        input: { hint: '[status | approve | reject [理由] | confirm [说明] | decline [理由] | resolve [说明] | accept | abandon [理由] | criteria | migrate | contract | doctor | 项目名]' },
         async handler(invocation) {
           const raw = invocation.rawInput.trim()
           const [keyword, ...rest] = raw.split(/\s+/)
@@ -556,6 +565,15 @@ export function apply(ctx, config) {
             return {
               kind: 'success',
               text: `已迁移格式（备份在 ${result.backup}）：${result.count} 条旧标准迁成判断型 —— 它们只能由你确认。旧计划没有覆盖关系，请重新提交一份带覆盖的计划再批准。`,
+            }
+          }
+
+          if (keyword === CONTRACT_KEYWORD) {
+            const result = state.reopenContract({ by: 'user', project: targeted })
+            if (!result.ok) return { kind: 'error', text: result.problem }
+            return {
+              kind: 'success',
+              text: `契约文件已重新钉指纹（${result.count} 个），退回待批准 —— 用 /${COMMAND_NAME} approve 确认之后才能继续。`,
             }
           }
 
@@ -741,6 +759,22 @@ function readWorkspaceFile(workspace, path) {
 
   try {
     return readFileSync(absolute, 'utf8')
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 契约文件的指纹：内容变了指纹就变。读不到、或路径越界，都按「没有」处理 ——
+ * 那会让验收停下，而不是悄悄放过。
+ */
+function hashWorkspaceFile(workspace, path) {
+  const root = resolve(workspace)
+  const absolute = resolve(root, path)
+  if (absolute !== root && !absolute.startsWith(root + sep)) return null
+
+  try {
+    return createHash('sha256').update(readFileSync(absolute)).digest('hex').slice(0, 16)
   } catch {
     return null
   }
