@@ -82,7 +82,7 @@ test('判断型标准没有可执行的命令，不会被当成命令检查', ()
   assert.equal(project.acceptance[0].check.command, undefined)
 })
 
-test('改掉某条标准的检查就改了标准本身：批准之后被挡，必须重新批准', () => {
+test('改掉某条标准的检查：这一条待批准，派分被挡，单独批准就能继续', () => {
   const store = memoryStore()
   const state = machine(store)
   start(state, [COMMAND])
@@ -99,14 +99,21 @@ test('改掉某条标准的检查就改了标准本身：批准之后被挡，�
       '',
       '- 检查：命令 npm run lint',
       '- 期望退出码：0',
-'- 允许空输出：是',
+      '- 允许空输出：是',
       '',
     ].join('\n'),
   })
 
   const next = state.nextPart()
   assert.equal(next.ok, false)
-  assert.match(next.problem, /验收标准/)
+  assert.match(next.problem, /还没批准/)
+  assert.match(next.problem, /approve-criteria/)
+
+  // 单独批这一条，不退回待批准，也不用重批整份计划。
+  const approved = state.approveCriteria({ by: 'user' })
+  assert.equal(approved.ok, true)
+  assert.deepEqual(approved.ids, ['AC-1'])
+  assert.equal(state.nextPart().ok, true)
 })
 
 test('文件里重排标准不改变身份，也不改变指纹', () => {

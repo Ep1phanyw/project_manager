@@ -51,6 +51,7 @@ const DECLINE_KEYWORD = 'decline'
 const RESOLVE_KEYWORD = 'resolve'
 const MIGRATE_KEYWORD = 'migrate'
 const CONTRACT_KEYWORD = 'contract'
+const APPROVE_CRITERIA_KEYWORD = 'approve-criteria'
 
 /** 子对话必须按这个形状回报，所以回报不靠解析自由文本。 */
 const REPORT_SCHEMA = {
@@ -500,8 +501,8 @@ export function apply(ctx, config) {
       ctx.commands.register({
         name: COMMAND_NAME,
         description:
-          '项目状态、计划与审批：/manager（或 status）看状态，/manager approve 批准计划，/manager reject [理由] 驳回，/manager confirm [说明] 确认等你点头的部分，/manager decline [理由] 打回，/manager resolve [说明] 解除阻塞，/manager accept 确认收尾验收，/manager abandon [理由] 放弃项目，/manager criteria 重开验收标准，/manager migrate 迁移旧格式项目，/manager contract 重新钉契约指纹，/manager doctor 自检，/manager <项目名> 指定项目',
-        input: { hint: '[status | approve | reject [理由] | confirm [说明] | decline [理由] | resolve [说明] | accept | abandon [理由] | criteria | migrate | contract | doctor | 项目名]' },
+          '项目状态、计划与审批：/manager（或 status）看状态，/manager approve 批准计划，/manager reject [理由] 驳回，/manager confirm [说明] 确认等你点头的部分，/manager decline [理由] 打回，/manager resolve [说明] 解除阻塞，/manager accept 确认收尾验收，/manager abandon [理由] 放弃项目，/manager criteria 重开验收标准，/manager migrate 迁移旧格式项目，/manager contract 重新钉契约指纹，/manager approve-criteria [AC-n] 单独批准改了检查的标准，/manager doctor 自检，/manager <项目名> 指定项目',
+        input: { hint: '[status | approve | reject [理由] | confirm [说明] | decline [理由] | resolve [说明] | accept | abandon [理由] | criteria | migrate | contract | approve-criteria [AC-n] | doctor | 项目名]' },
         async handler(invocation) {
           const raw = invocation.rawInput.trim()
           const [keyword, ...rest] = raw.split(/\s+/)
@@ -578,6 +579,16 @@ export function apply(ctx, config) {
             return {
               kind: 'success',
               text: `已迁移格式（备份在 ${result.backup}）：${result.count} 条旧标准迁成判断型 —— 它们只能由你确认。旧计划没有覆盖关系，请重新提交一份带覆盖的计划再批准。`,
+            }
+          }
+
+          if (keyword === APPROVE_CRITERIA_KEYWORD) {
+            const ids = args.split(/\s+/).filter(Boolean)
+            const result = state.approveCriteria({ by: 'user', project: targeted, ids })
+            if (!result.ok) return { kind: 'error', text: result.problem }
+            return {
+              kind: 'success',
+              text: `已批准这些标准的检查：${result.ids.join('、')}。覆盖它们、按旧检查验过的部分标成了「需重验」，可以重新派分。`,
             }
           }
 
