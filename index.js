@@ -1,5 +1,5 @@
 /**
- * dsh-project-manager — 项目编排插件的宿主半侧入口。
+ * dsh-project-manager-plugin — 项目编排插件的宿主半侧入口。
  *
  * 模型开车：这里只提供工具与命令，驾驶由主对话自己做。
  * 状态落在会话工作区的 `.scratch/` 下，是普通 markdown。
@@ -23,7 +23,7 @@ import { runCommandCapture } from './lib/exec.js'
 import { detectDshVersion, detectExpectedRange, formatDoctorReport } from './lib/doctor.js'
 import { surveyWorkspace, workspaceContext } from './lib/workspace.js'
 
-export const name = 'dsh-project-manager'
+export const name = 'dsh-project-manager-plugin'
 
 /**
  * 只有三项是硬依赖：少了它们，插件连存在意义都没有，缺了就不该加载。

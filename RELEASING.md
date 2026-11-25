@@ -2,9 +2,9 @@
 
 ## 0. 名字与包名
 
-- **npm 包名**：`dsh-project-manager`（2026-11-25 用 `npm view` 查过：`project_manager` 现在返回 404，但那个名字太泛、且在别的生态里重名多；`dsh-project-manager` 更能被搜到）。
+- **npm 包名**：`dsh-project-manager-plugin`（2026-11-25 用 `npm view` 查过：`project_manager` 现在返回 404，但那个名字太泛、且在别的生态里重名多；`dsh-project-manager-plugin` 更能被搜到）。
 - **GitHub 仓库**：`Ep1phanyw/project_manager`（仓库名不动，`package.json` 的 `repository` 指回来即可）。
-- **bundle id 必须等于包名**：`cordis.patch.yml` 里的 `id` 与 `name` 都是 `dsh-project-manager`。
+- **bundle id 必须等于包名**：`cordis.patch.yml` 里的 `id` 与 `name` 都是 `dsh-project-manager-plugin`。
 - **改包名之后要重装**：profile 里记的是 `include:<包名>`，旧行读的仍是 `project_manager`，必须重装一次插件（`plugin_manager` 或 Plugins 页）。
 
 ## 0.5 怎么被人搜到
@@ -50,7 +50,7 @@ description:
 
 CI 还会查：条目数、manifest、**仓库年龄 ≥ 1 天**、awesome-lint 与站点构建。评审可能打 `held: author` 让你改描述——改同一分支即可，不用重开 PR。
 
-**已提交**：<https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/18772>（2026-11-25，分支 `Ep1phanyw:add-dsh-project-manager`，只加了一个 YAML 文件）。
+**已提交**：<https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/18772>（2026-11-25，分支 `Ep1phanyw:add-dsh-project-manager-plugin`，只加了一个 YAML 文件）。
 
 ### npm 与市场的关系
 
@@ -90,9 +90,9 @@ npm publish --access public
 
 发布之后**不要相信 `+ name@version` 那行**：
 
-1. 查 `https://registry.npmjs.org/dsh-project-manager`：`dist-tags.latest` 必须等于 0.3.0，`dist.tarball` 能下载。
-2. 在干净 profile 里真装一遍：`dsh plugin --profile test add dsh-project-manager`。
-3. 新包名可能先留一个 `0.0.0-stage` 占位壳；国内镜像还可能把旧壳当 `latest`（`registry.npmmirror.com`），必要时让它重新抓取：`curl -X PUT https://registry.npmmirror.com/dsh-project-manager/sync`。
+1. 查 `https://registry.npmjs.org/dsh-project-manager-plugin`：`dist-tags.latest` 必须等于 0.3.0，`dist.tarball` 能下载。
+2. 在干净 profile 里真装一遍：`dsh plugin --profile test add dsh-project-manager-plugin`。
+3. 新包名可能先留一个 `0.0.0-stage` 占位壳；国内镜像还可能把旧壳当 `latest`（`registry.npmmirror.com`），必要时让它重新抓取：`curl -X PUT https://registry.npmmirror.com/dsh-project-manager-plugin/sync`。
 
 ## 已知的未验证项
 
