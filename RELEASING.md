@@ -50,6 +50,8 @@ description:
 
 CI 还会查：条目数、manifest、**仓库年龄 ≥ 1 天**、awesome-lint 与站点构建。评审可能打 `held: author` 让你改描述——改同一分支即可，不用重开 PR。
 
+**已提交**：<https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/18772>（2026-11-25，分支 `Ep1phanyw:add-dsh-project-manager`，只加了一个 YAML 文件）。
+
 ### npm 与市场的关系
 
 npm 发布**不是收录前提**，但发布后市场能显示下载量、安装也免掉 `allowBuilds` 构建授权这一步。发布后映射自动从 registry 采集（要求包的 `repository` 指回本仓库），条目里不用写任何 npm 字段。
