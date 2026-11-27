@@ -9,6 +9,9 @@ import { createProjectState } from '../lib/project-state.js'
 import { createFsStore } from '../lib/store.js'
 import { judged } from './fixtures.js'
 
+/** 绝对路径要按平台取：CI 跑在 Linux 上，`C:\work` 在那边不是绝对路径。 */
+const WORKSPACE = process.platform === 'win32' ? 'C:\\work' : '/work'
+
 function temp() {
   const dir = mkdtempSync(join(tmpdir(), 'dsh-panel-'))
   return { dir, cleanup: () => rmSync(dir, { recursive: true, force: true }) }
@@ -108,9 +111,9 @@ test('路由只读：读取入口被调用一次、参数只有 workspace', asyn
     },
   })
 
-  await call(api, `${PANEL_PREFIX}/projects?workspace=${encodeURIComponent('C:\\work')}`)
+  await call(api, `${PANEL_PREFIX}/projects?workspace=${encodeURIComponent(WORKSPACE)}`)
 
-  assert.deepEqual(seen, [{ workspace: 'C:\\work' }])
+  assert.deepEqual(seen, [{ workspace: WORKSPACE }])
 })
 
 /** 裁决请求：默认同源，方便只测业务分支。 */
@@ -166,16 +169,16 @@ function fakeState(overrides = {}) {
 test('确认、收尾验收、打回走同一个裁决入口，身份仍是用户', async () => {
   const { api, calls } = fakeState()
 
-  const confirm = await gate(api, { body: { workspace: 'C:\\work', name: 'demo', gate: 'confirm' } })
+  const confirm = await gate(api, { body: { workspace: WORKSPACE, name: 'demo', gate: 'confirm' } })
   assert.equal(confirm.status, 200)
   assert.match(confirm.body.text, /P1/)
 
-  const accept = await gate(api, { body: { workspace: 'C:\\work', name: 'demo', gate: 'accept' } })
+  const accept = await gate(api, { body: { workspace: WORKSPACE, name: 'demo', gate: 'accept' } })
   assert.equal(accept.status, 200)
   assert.match(accept.body.text, /完成/)
 
   const decline = await gate(api, {
-    body: { workspace: 'C:\\work', name: 'demo', gate: 'decline', reason: '不行' },
+    body: { workspace: WORKSPACE, name: 'demo', gate: 'decline', reason: '不行' },
   })
   assert.equal(decline.status, 200)
   assert.match(decline.body.text, /P1/)
@@ -194,7 +197,7 @@ test('打回在部分不成立时落到收尾验收；两边都不成立就透�
     declineAcceptance: { ok: true },
   })
   const { body } = await gate(fallback.api, {
-    body: { workspace: 'C:\\work', name: 'demo', gate: 'decline', reason: '重做' },
+    body: { workspace: WORKSPACE, name: 'demo', gate: 'decline', reason: '重做' },
   })
   assert.match(body.text, /收尾验收/)
 
@@ -203,7 +206,7 @@ test('打回在部分不成立时落到收尾验收；两边都不成立就透�
     declineAcceptance: { ok: false, problem: '收尾验收也没在等你' },
   })
   const failed = await gate(both.api, {
-    body: { workspace: 'C:\\work', name: 'demo', gate: 'decline', reason: '重做' },
+    body: { workspace: WORKSPACE, name: 'demo', gate: 'decline', reason: '重做' },
   })
   assert.equal(failed.body.ok, false)
   assert.equal(failed.body.problem, '没有待确认的部分')
@@ -213,7 +216,7 @@ test('桌面端没有 Origin（file:// 承载）时放行，因为跨站页面�
   const { api, calls } = fakeState()
   const { status, body } = await gate(api, {
     origin: null,
-    body: { workspace: 'C:\\work', name: 'demo', gate: 'approve' },
+    body: { workspace: WORKSPACE, name: 'demo', gate: 'approve' },
   })
   assert.equal(status, 200)
   assert.equal(body.ok, true)
@@ -224,7 +227,7 @@ test('Origin 为 null 同样放行 —— 桌面端 fetch 实际带的就是 nul
   const { api } = fakeState()
   const { status } = await gate(api, {
     origin: 'null',
-    body: { workspace: 'C:\\work', name: 'demo', gate: 'approve' },
+    body: { workspace: WORKSPACE, name: 'demo', gate: 'approve' },
   })
   assert.equal(status, 200)
 })
@@ -234,7 +237,7 @@ test('Origin 与 Host 不一致时被拒，跨源页面发不进来', async () =
   const { status } = await gate(api, {
     origin: 'http://evil.example',
     host: '127.0.0.1:56695',
-    body: { workspace: 'C:\\work', name: 'demo', gate: 'approve' },
+    body: { workspace: WORKSPACE, name: 'demo', gate: 'approve' },
   })
   assert.equal(status, 403)
   assert.deepEqual(calls, [])
@@ -243,7 +246,7 @@ test('Origin 与 Host 不一致时被拒，跨源页面发不进来', async () =
 test('同源批准计划：身份固定为用户，项目名原样交给状态机', async () => {
   const { api, calls } = fakeState()
   const { status, body } = await gate(api, {
-    body: { workspace: 'C:\\work', name: '面板演示', gate: 'approve' },
+    body: { workspace: WORKSPACE, name: '面板演示', gate: 'approve' },
   })
 
   assert.equal(status, 200)
@@ -254,7 +257,7 @@ test('同源批准计划：身份固定为用户，项目名原样交给状态�
 test('同源打回：理由原样交给状态机，状态机的拒绝原文透传回来', async () => {
   const { api, calls } = fakeState({ reject: { ok: false, problem: '驳回必须写理由' } })
   const { status, body } = await gate(api, {
-    body: { workspace: 'C:\\work', name: 'demo', gate: 'reject', reason: '   ' },
+    body: { workspace: WORKSPACE, name: 'demo', gate: 'reject', reason: '   ' },
   })
 
   assert.equal(status, 200)
@@ -266,14 +269,14 @@ test('同源打回：理由原样交给状态机，状态机的拒绝原文透�
 test('不认识的裁决与没有接上状态机时都说清楚，而不是假装成功', async () => {
   const { api } = fakeState()
   const unknown = await gate(api, {
-    body: { workspace: 'C:\\work', name: 'demo', gate: 'abandon' },
+    body: { workspace: WORKSPACE, name: 'demo', gate: 'abandon' },
   })
   assert.equal(unknown.status, 400)
   assert.match(unknown.body.problem, /abandon/)
 
   const noState = createPanelApi()
   const missing = await gate(noState, {
-    body: { workspace: 'C:\\work', name: 'demo', gate: 'approve' },
+    body: { workspace: WORKSPACE, name: 'demo', gate: 'approve' },
   })
   assert.equal(missing.status, 500)
 })
@@ -282,7 +285,7 @@ test('POST 到别的路径是 404，不是静默成功', async () => {
   const { api } = fakeState()
   const { status } = await gate(api, {
     path: `${PANEL_PREFIX}/projects`,
-    body: { workspace: 'C:\\work', name: 'demo', gate: 'approve' },
+    body: { workspace: WORKSPACE, name: 'demo', gate: 'approve' },
   })
   assert.equal(status, 404)
 })
@@ -312,7 +315,7 @@ test('handler 壳把 POST 正文转给裁决：同源批准成功并回 JSON', a
   const handle = createGateHandler(api)
   const { req, res } = fakeExchange({
     headers: { host: '127.0.0.1:56695', origin: 'http://127.0.0.1:56695', 'content-type': 'application/json' },
-    body: JSON.stringify({ workspace: 'C:\\work', name: 'demo', gate: 'approve' }),
+    body: JSON.stringify({ workspace: WORKSPACE, name: 'demo', gate: 'approve' }),
   })
 
   await handle(req, res)
@@ -334,7 +337,7 @@ test('handler 壳：GET 回 405，跨源写回 403，正文非 JSON 回 400', as
 
   const crossOrigin = fakeExchange({
     headers: { host: '127.0.0.1:56695', origin: 'http://evil.example' },
-    body: JSON.stringify({ workspace: 'C:\\work', name: 'demo', gate: 'approve' }),
+    body: JSON.stringify({ workspace: WORKSPACE, name: 'demo', gate: 'approve' }),
   })
   await handle(crossOrigin.req, crossOrigin.res)
   assert.equal(crossOrigin.res.statusCode, 403)
