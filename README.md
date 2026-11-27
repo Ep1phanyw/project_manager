@@ -181,3 +181,15 @@
 派分时，子对话拿到的任务描述里也会列出工作区里实际存在的约定文件（`README.md`、`GLOSSARY.md`、`docs/adr/` 等），让它先读、再动手 —— 否则一个空上下文的子对话在半成品仓库里只会另起一套。
 
 **它不做的**：不判断哪些部分「已经完成」。已有的活不要列进计划即可，插件只跟踪它自己派分出去的部分。
+
+## 项目面板
+
+插件在 DSH 的 Web GUI 里自带一个「项目面板」：侧栏一个条目，点开占中央栏，一屏摊开一个项目的状态，并把三处「只有人能过」的裁决放到按钮上。
+
+- **入口**：侧栏「项目面板」（图标在「自动化任务」之后）；顶部可切换工作区，默认取最近有活动的那个。
+- **能做什么**：查看项目列表与详情（阶段、目标、验收标准及其检查与覆盖、部分状态与重试次数、审批历史、收尾验收）；批准计划、确认判断型部分、确认收尾验收，以及三处对应的「打回」（打回必须写理由）。
+- **不能做什么**：另外 11 个维护动作（`approve-criteria`、`contract`、`migrate`、`abandon`、`resolve`、`criteria` 等）仍只在 `/manager` 命令里；面板不派分、不验收、不判断状态迁移。
+- **数据从哪来**：宿主半在本机 GUI 服务器上注册只读路由 `/manager-panel/projects`、`/manager-panel/project`，裁决走 `POST /manager-panel/gate`（只认同源请求，桌面端 `file://` 承载放行）；面板每 2 秒轮询、窗口聚焦即刷，也可手动刷新。
+- **安装**：客户端半随包分发（`package.json` 的 `exports["./client"]` 与 `dsh.client`），装好 bundle 后刷新页面即可看到侧栏条目，不需要额外配置。
+
+面板的定位与取舍见 [ADR-0004](docs/adr/0004-project-panel-is-a-second-caller.md)，术语见 [GLOSSARY.md](GLOSSARY.md) 的「Project panel」「Final acceptance」。

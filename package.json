@@ -1,6 +1,6 @@
 {
   "name": "dsh-project-manager-plugin",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "把一次项目交付拆成部分、分派给子对话、按验收标准收工。",
   "keywords": [
     "dsh",
@@ -25,11 +25,13 @@
   "main": "index.js",
   "exports": {
     ".": "./index.js",
+    "./client": "./client.js",
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
   "files": [
     "index.js",
+    "client.js",
     "lib",
     "skills",
     "cordis.patch.yml",
@@ -43,6 +45,15 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-workspace"
+      ]
     }
   },
   "scripts": {

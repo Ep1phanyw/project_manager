@@ -59,8 +59,8 @@ npm 发布**不是收录前提**，但发布后市场能显示下载量、安装
 ## 1. 本地必须全绿
 
 ```
-node scripts/check.js     # 17 个模块都能加载
-node test/run.js          # 318 条用例
+node scripts/check.js     # 20 个模块都能加载
+node test/run.js          # 350 条用例
 node scripts/pack-check.js # 打包清单自检
 ```
 
@@ -71,11 +71,11 @@ npm pack --dry-run
 ```
 
 确认列表里**没有** `test/`、`scripts/`、`.scratch/`、`docs/` —— 包的内容应该只有
-`index.js`、`lib/`、`skills/`、`cordis.patch.yml`、`LICENSE`、`THIRD-PARTY-NOTICES.md`。
+`index.js`、`client.js`、`lib/`、`skills/`、`cordis.patch.yml`、`LICENSE`、`THIRD-PARTY-NOTICES.md`。
 
 ## 3. 版本
 
-当前 `0.3.0`（首个公开版本；此前从未发过 npm）。`0.x` 阶段：行为变化跳 minor，修 bug 跳 patch，不承诺兼容。
+当前 `0.4.0`（项目面板：GUI 里看状态 + 三处用户裁决；npm 仍从未发布）。`0.x` 阶段：行为变化跳 minor，修 bug 跳 patch，不承诺兼容。
 
 ## 4. CI
 

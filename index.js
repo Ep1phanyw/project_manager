@@ -10,6 +10,7 @@ import { execFileSync } from 'node:child_process'
 import { join, resolve, sep } from 'node:path'
 
 import { formatStatus } from './lib/format.js'
+import { PANEL_PREFIX, createGateHandler, createPanelApi } from './lib/panel-routes.js'
 import { EVIDENCE_TYPES, createProjectState } from './lib/project-state.js'
 import { createFsStore } from './lib/store.js'
 
@@ -106,6 +107,7 @@ export function apply(ctx, config) {
   const evidenceTypes = readEvidenceTypes(config)
 
   registerFlowSkills(ctx)
+  registerPanelRoutes(ctx, stateAt)
 
   /** 把「这个版本到底给了什么」摊开 —— 坏在哪个接口上一眼看得到。 */
   async function doctorReport(ctxRef, agent) {
@@ -164,6 +166,16 @@ export function apply(ctx, config) {
   /** 每次调用都按它所在会话的工作区解析状态目录，状态天然跟随会话。 */
   async function stateFor(agent) {
     const workspace = await ctx.workingDirectory.ensure(agent)
+    return stateAt(workspace, agent)
+  }
+
+  /**
+   * 按**显式工作区路径**装配状态机：会话只是「工作区从哪来」的一种来源。
+   * 面板与将来的本地路由按用户选中的工作区读写状态，走的是这里。
+   * 没有会话上下文时 `agent` 传 null —— 只读与批准类操作不需要它，
+   * 需要派分的能力会在子对话那一层明说「没有会话上下文」。
+   */
+  function stateAt(workspace, agent = null) {
     const runInWorkspace = (command) => runCommandCapture(command, { cwd: workspace })
 
     return createProjectState({
@@ -184,6 +196,8 @@ export function apply(ctx, config) {
       preRun: readPreRun(config),
       maxParallel: readParallelLimit(config),
       capacity: () => {
+        // 没有会话上下文时问不到并发上限：按「不知道」处理，不猜一个数。
+        if (!agent) return null
         try {
           return subagentsOf(ctx)?.capacityOf?.(agent) ?? null
         } catch {
@@ -819,6 +833,38 @@ function registerFlowSkills(ctx) {
     } catch {
       continue
     }
+  }
+}
+
+/**
+ * 给项目面板挂只读数据路由。
+ *
+ * `webServer` 是可选能力：没有它的组合（headless）不装界面，也不该因此起不来。
+ * 所以不在 `inject` 里要求它，拿不到就安静地少这一条路由。
+ */
+function registerPanelRoutes(ctx, stateAt) {
+  const webServer = typeof ctx.get === 'function' ? ctx.get('webServer') : undefined
+  if (!webServer || typeof webServer.register !== 'function') return
+
+  const api = createPanelApi({
+    // 写路径复用「按显式工作区装配状态机」，不需要会话上下文。
+    createState: ({ workspace }) => stateAt(workspace, null),
+  })
+  const gate = createGateHandler(api)
+
+  // 读走 resource，写走 handler —— resource 路由只服务 GET/HEAD，
+  // 非 GET 会被框架直接回 405，裁决必须自己拥有请求生命周期。
+  const routes = [
+    { kind: 'exact', path: `${PANEL_PREFIX}/projects`, auth: 'anonymous', resource: (request) => api.handle(request) },
+    { kind: 'exact', path: `${PANEL_PREFIX}/project`, auth: 'anonymous', resource: (request) => api.handle(request) },
+    { kind: 'exact', path: `${PANEL_PREFIX}/gate`, auth: 'anonymous', handler: gate },
+  ]
+
+  for (const route of routes) {
+    ctx.effect(
+      () => webServer.register(route),
+      `project_manager: panel route ${route.path}`,
+    )
   }
 }
 
